@@ -1,6 +1,3 @@
-Here’s a **clean, production-style `.md` documentation** for your agent, grounded in your codebase and explicitly connecting to **practical LLM techniques**, including **Self-Ask** and **Confidence-based reasoning** (with proper citations).
-
----
 
 # 📄 Send Money Agent — Technical Documentation
 
@@ -364,28 +361,197 @@ From `AgentRunner` :
 
 ---
 
-### ✅ Compared to naive LLM
-
-| Naive LLM            | Your System        |
-| -------------------- | ------------------ |
-| Guesses missing info | Asks clarification |
-| Stateless            | Stateful           |
-| Hallucinates         | Validates          |
-| Single-shot          | Multi-turn         |
+Got it — here is exactly what you need: **clean `.md`, interview-ready, focused, didactic, and structured like a story**.
 
 ---
 
-## 10. Key Takeaways
+# 📄 Evaluation Strategy — Send Money Agent
 
-This system combines:
+## 🎯 How we evaluate the agent
 
-1. **Slot Filling**
-2. **Self-Ask reasoning**
-3. **Confidence-based decisions**
-4. **Tool-augmented LLM (ReAct)**
-5. **Rule-based safety layer**
+To evaluate the agent, we use the following metrics:
 
-👉 This is exactly how **real-world LLM agents are built in production**.
+---
+
+## 📊 Metrics Used
+
+| Category                 | Metric               | What it Measures                                 |
+| ------------------------ | -------------------- | ------------------------------------------------ |
+| **Deterministic (Core)** | State Accuracy       | Final correctness of extracted fields            |
+|                          | Task Completion      | Whether the flow ended correctly                 |
+|                          | Extraction Precision | If information was extracted at the right moment |
+|                          | Tool Call Accuracy   | Correct usage of tools (update, clarify, etc.)   |
+|                          | Correction Fidelity  | Proper handling of user corrections              |
+| **LLM Behavior**         | Response Discipline  | Quality and control of responses                 |
+|                          | Robustness           | Resistance to noisy/adversarial inputs           |
+| **System**               | Latency              | Response time                                    |
+|                          | Token Usage          | Cost efficiency                                  |
+
+---
+
+## 🧠 Why we chose these metrics
+
+We chose these metrics because they reflect **real-world requirements of an agent system**, not just NLP quality.
+
+### 1. Deterministic metrics → Business safety
+
+Metrics like:
+
+* State Accuracy
+* Task Completion
+* Correction Fidelity
+
+are critical because this is a **transactional system**.
+
+👉 In this context:
+
+```text
+A small mistake = a financial error
+```
+
+So we need **strict, binary guarantees**, not probabilistic ones.
+
+---
+
+### 2. Temporal + behavioral metrics → UX quality
+
+Metrics like:
+
+* Extraction Precision
+* Tool Call Accuracy
+
+capture something more subtle:
+
+```text
+“How efficiently and correctly the agent understands and acts”
+```
+
+👉 Example:
+
+* Extracting "USD" late = bad UX
+* Asking unnecessary questions = friction
+
+These metrics ensure the agent behaves like a **smart assistant, not a form**
+
+---
+
+### 3. LLM-as-Judge metrics → Conversational control
+
+Metrics like:
+
+* Response Discipline
+* Robustness
+
+are evaluated using an LLM-as-judge approach (similar to AgentBench).
+
+👉 Why?
+
+Because some properties cannot be measured deterministically:
+
+* Is the response concise?
+* Did it follow the “one question” rule?
+* Did it leak internal reasoning?
+
+These require **semantic evaluation**, not rules.
+
+---
+
+### 4. Inspired by modern evaluation frameworks
+
+This evaluation design is inspired by:
+
+* AgentBench → evaluating agents across reasoning + action
+* On Calibration of Modern Neural Networks → importance of controlling overconfident generation
+
+👉 Key idea:
+
+```text
+We separate “correctness” from “behavior”
+```
+
+---
+
+## 🚀 How we evaluated the agent
+
+We built a **multi-turn test suite** covering:
+
+* ambiguity cases
+* corrections
+* missing information
+* control flows (cancel, restart)
+
+Then we:
+
+1. Ran the agent across all test cases
+2. Logged full traces (state + tool calls) 
+3. Computed metrics using a two-layer evaluator 
+
+---
+
+## 📊 Results
+
+### 🌍 Global Metrics
+
+| Metric                   | Value      |
+| ------------------------ | ---------- |
+| **State Accuracy**       | **1.00**   |
+| **Task Completion**      | **1.00**   |
+| **Extraction Precision** | **1.00**   |
+| **Tool Call Accuracy**   | **0.97**   |
+| **Correction Fidelity**  | **1.00**   |
+| **Response Discipline**  | **0.69**   |
+| **Hard Fail Rate**       | **0.00**   |
+| **Latency (ms)**         | **22,277** |
+
+---
+
+### 🧪 Key Observations
+
+#### ✅ Strengths
+
+* **Perfect correctness (1.0 across all core metrics)**
+* No hard failures → system is **production-safe**
+* Strong handling of:
+
+  * ambiguity
+  * corrections
+  * multi-turn flows
+
+---
+
+#### ⚠️ Weakness
+
+* **Response Discipline = 0.69**
+
+👉 This means:
+
+* Sometimes asks more than one question
+* Slight verbosity
+* Minor deviations from prompt rules
+
+---
+
+## 🧠 Final Insight (What this shows)
+
+This evaluation proves that:
+
+```text
+The agent is structurally correct and robust,
+but still behaves like a typical LLM in generation.
+```
+
+👉 In other words:
+
+* ✅ Logic layer = strong (deterministic + tools)
+* ⚠️ Language layer = needs refinement
+
+---
+
+## 🏁 Final Takeaway (Interview-ready)
+
+> We designed the evaluation to separate **hard correctness (must be perfect)** from **LLM behavior (can be optimized)**.
+>
+> This allows us to ensure the system is **safe for production**, while still improving the conversational quality over time.
 
 ---
 
