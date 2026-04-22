@@ -1,0 +1,576 @@
+{
+  "test_suite": [
+
+    {
+      "test_id": "T10_double_yes_name_and_country",
+      "category": "ambiguity",
+      "input": {
+        "turns": [
+          {"user": "send 500 USD to Maria Chile via bank deposit"},
+          {"user": "yes that's the name and yes Chile is the country"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","clarify"],
+          ["resolve_clarification","resolve_clarification","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Maria Chile",
+          "country": "CL",
+          "amount": 500.0,
+          "currency": "USD",
+          "delivery_method": "bank_deposit",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Is 'Maria Chile' the recipient's full name?",
+            "You're about to send 500 USD to Maria Chile in Chile via bank deposit. Confirm? (yes / no)",
+            "Transfer of 500 USD to Maria Chile in Chile submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T11_reject_then_full_name_then_country",
+      "category": "ambiguity",
+      "input": {
+        "turns": [
+          {"user": "send 500 USD to Maria Chile via cash pickup"},
+          {"user": "no"},
+          {"user": "Maria Fernanda Silva"},
+          {"user": "Chile"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","clarify"],
+          ["resolve_clarification"],
+          ["resolve_clarification"],
+          ["resolve_clarification","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Maria Fernanda Silva",
+          "country": "CL",
+          "amount": 500.0,
+          "currency": "USD",
+          "delivery_method": "cash_pickup",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Is 'Maria Chile' the recipient's full name?",
+            "What is the recipient's full name?",
+            "Is Chile the destination country or part of the name?",
+            "You're about to send 500 USD to Maria Fernanda Silva in Chile via cash pickup. Confirm? (yes / no)",
+            "Transfer of 500 USD to Maria Fernanda Silva in Chile submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T12_start_over_then_new_transfer",
+      "category": "control",
+      "input": {
+        "turns": [
+          {"user": "send 500 USD to Maria Chile"},
+          {"user": "start over"},
+          {"user": "send 300 USD to Ana Silva in Brazil via mobile wallet"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["clarify"],
+          [],
+          ["update_state","update_state","update_state","update_state","update_state","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Ana Silva",
+          "country": "BR",
+          "amount": 300.0,
+          "currency": "USD",
+          "delivery_method": "mobile_wallet",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Is 'Maria Chile' the recipient's full name?",
+            "Transfer cancelled. Start over whenever you're ready.",
+            "You're about to send 300 USD to Ana Silva in Brazil via mobile wallet. Confirm? (yes / no)",
+            "Transfer of 300 USD to Ana Silva in Brazil submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T13_cancel_mid_flow",
+      "category": "control",
+      "input": {
+        "turns": [
+          {"user": "send 500 USD to Maria Chile via bank transfer"},
+          {"user": "cancel"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","clarify"],
+          []
+        ],
+        "task": {"should_complete": 0},
+        "final_state": {
+          "recipient_name": null,
+          "country": null,
+          "amount": null,
+          "currency": null,
+          "delivery_method": null,
+          "status": "collecting"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Is 'Maria Chile' the recipient's full name?",
+            "Transfer cancelled. Start over whenever you're ready."
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T14_fix_amount_and_name",
+      "category": "correction",
+      "input": {
+        "turns": [
+          {"user": "send 2OO USD to Bruno in Brazil via bank transfer"},
+          {"user": "200 and Bruno Silva"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","clarify"],
+          ["resolve_clarification","resolve_clarification","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Bruno Silva",
+          "country": "BR",
+          "amount": 200.0,
+          "currency": "USD",
+          "delivery_method": "bank_transfer",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Did you mean 200?",
+            "You're about to send 200 USD to Bruno Silva in Brazil via bank transfer. Confirm? (yes / no)",
+            "Transfer of 200 USD to Bruno Silva in Brazil submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T15_change_amount_twice",
+      "category": "state",
+      "input": {
+        "turns": [
+          {"user": "send 1000 USD to Maria Silva in Brazil via bank deposit"},
+          {"user": "actually 500"},
+          {"user": "actually 300"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state"],
+          ["update_state"],
+          ["update_state","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Maria Silva",
+          "country": "BR",
+          "amount": 300.0,
+          "currency": "USD",
+          "delivery_method": "bank_deposit",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "You're about to send 1000 USD to Maria Silva in Brazil via bank deposit. Confirm? (yes / no)",
+            "You're about to send 500 USD to Maria Silva in Brazil via bank deposit. Confirm? (yes / no)",
+            "You're about to send 300 USD to Maria Silva in Brazil via bank deposit. Confirm? (yes / no)",
+            "Transfer of 300 USD to Maria Silva in Brazil submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T16_change_recipient_only",
+      "category": "state",
+      "input": {
+        "turns": [
+          {"user": "send 500 USD to Maria Silva in Brazil via cash pickup"},
+          {"user": "actually send to Ana Souza"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state"],
+          ["update_state","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Ana Souza",
+          "country": "BR",
+          "amount": 500.0,
+          "currency": "USD",
+          "delivery_method": "cash_pickup",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "You're about to send 500 USD to Maria Silva in Brazil via cash pickup. Confirm? (yes / no)",
+            "You're about to send 500 USD to Ana Souza in Brazil via cash pickup. Confirm? (yes / no)",
+            "Transfer of 500 USD to Ana Souza in Brazil submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T17_country_then_currency_change",
+      "category": "state",
+      "input": {
+        "turns": [
+          {"user": "send 500 USD to Maria Silva in Brazil via bank transfer"},
+          {"user": "change to Colombia"},
+          {"user": "actually use COP"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","validate_transfer"],
+          ["update_state","validate_transfer"],
+          ["update_state","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Maria Silva",
+          "country": "CO",
+          "amount": 500.0,
+          "currency": "COP",
+          "delivery_method": "bank_transfer",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "You're about to send 500 USD to Maria Silva in Brazil via bank transfer. Confirm? (yes / no)",
+            "You're about to send 500 USD to Maria Silva in Colombia via bank transfer. Confirm? (yes / no)",
+            "You're about to send 500 COP to Maria Silva in Colombia via bank transfer. Confirm? (yes / no)",
+            "Transfer of 500 COP to Maria Silva in Colombia submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T18_missing_method_then_fill",
+      "category": "missing",
+      "input": {
+        "turns": [
+          {"user": "send 500 USD to Maria Silva in Chile"},
+          {"user": "bank deposit"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","next_field"],
+          ["update_state","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Maria Silva",
+          "country": "CL",
+          "amount": 500.0,
+          "currency": "USD",
+          "delivery_method": "bank_deposit",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "How should the recipient receive it?",
+            "You're about to send 500 USD to Maria Silva in Chile via bank deposit. Confirm? (yes / no)",
+            "Transfer of 500 USD to Maria Silva in Chile submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T19_missing_country_then_fill",
+      "category": "missing",
+      "input": {
+        "turns": [
+          {"user": "send 500 USD to Maria Silva via cash pickup"},
+          {"user": "Chile"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","next_field"],
+          ["update_state","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Maria Silva",
+          "country": "CL",
+          "amount": 500.0,
+          "currency": "USD",
+          "delivery_method": "cash_pickup",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Which country are you sending to?",
+            "You're about to send 500 USD to Maria Silva in Chile via cash pickup. Confirm? (yes / no)",
+            "Transfer of 500 USD to Maria Silva in Chile submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T20_go_ahead_without_state",
+      "category": "control",
+      "input": {
+        "turns": [
+          {"user": "go ahead"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["next_field"]
+        ],
+        "task": {"should_complete": 0},
+        "final_state": {
+          "recipient_name": null,
+          "country": null,
+          "amount": null,
+          "currency": null,
+          "delivery_method": null,
+          "status": "collecting"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Who is the recipient? (full name)"
+          ]
+        }
+      }
+    },
+        {
+      "test_id": "T21_name_country_collision_resolution",
+      "category": "ambiguity",
+      "input": {
+        "turns": [
+          {"user": "I want to send 300 USD to Chile Rodriguez via bank transfer"},
+          {"user": "Chile Rodriguez is the person, sending to Mexico"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","clarify"],
+          ["resolve_clarification","resolve_clarification","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Chile Rodriguez",
+          "country": "MX",
+          "amount": 300.0,
+          "currency": "USD",
+          "delivery_method": "bank_transfer",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Is 'Chile Rodriguez' the recipient's full name?",
+            "You're about to send 300 USD to Chile Rodriguez in Mexico via bank transfer. Confirm? (yes / no)",
+            "Transfer of 300 USD to Chile Rodriguez in Mexico submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T22_aggressive_confirmation_block",
+      "category": "control",
+      "input": {
+        "turns": [
+          {"user": "Send 500 USD to Ana Lima in Brazil via cash pickup"},
+          {"user": "just send it already"},
+          {"user": "I said DO IT, stop asking questions"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","validate_transfer"],
+          ["validate_transfer"],
+          ["validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Ana Lima",
+          "country": "BR",
+          "amount": 500.0,
+          "currency": "USD",
+          "delivery_method": "cash_pickup",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "You're about to send 500 USD to Ana Lima in Brazil via cash pickup. Confirm? (yes / no)",
+            "You're about to send 500 USD to Ana Lima in Brazil via cash pickup. Confirm? (yes / no)",
+            "You're about to send 500 USD to Ana Lima in Brazil via cash pickup. Confirm? (yes / no)",
+            "Transfer of 500 USD to Ana Lima in Brazil submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T23_country_change_mid_flow",
+      "category": "state",
+      "input": {
+        "turns": [
+          {"user": "Send 200 USD to Pedro Alves in Brazil via mobile wallet"},
+          {"user": "Actually change it to Colombia"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","validate_transfer"],
+          ["update_state","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Pedro Alves",
+          "country": "CO",
+          "amount": 200.0,
+          "currency": "USD",
+          "delivery_method": "mobile_wallet",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "You're about to send 200 USD to Pedro Alves in Brazil via mobile wallet. Confirm? (yes / no)",
+            "You're about to send 200 USD to Pedro Alves in Colombia via mobile wallet. Confirm? (yes / no)",
+            "Transfer of 200 USD to Pedro Alves in Colombia submitted successfully!"
+          ]
+        }
+      }
+    },
+
+    {
+      "test_id": "T24_fix_malformed_amount_and_name",
+      "category": "correction",
+      "input": {
+        "turns": [
+          {"user": "send 2OO brl to Carlos in Brazil via bank deposit"},
+          {"user": "200"},
+          {"user": "Carlos Mendes"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","clarify"],
+          ["resolve_clarification"],
+          ["resolve_clarification","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Carlos Mendes",
+          "country": "BR",
+          "amount": 200.0,
+          "currency": "BRL",
+          "delivery_method": "bank_deposit",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "Did you mean 200?",
+            "What's Carlos's full name?",
+            "You're about to send 200 BRL to Carlos Mendes in Brazil via bank deposit. Confirm? (yes / no)",
+            "Transfer of 200 BRL to Carlos Mendes in Brazil submitted successfully!"
+          ]
+        }
+      }
+    },
+    {
+      "test_id": "T25_country_override_after_initial",
+      "category": "state",
+      "input": {
+        "turns": [
+          {"user": "Send 200 USD to Luisa Pérez in Venezuela via cash pickup"},
+          {"user": "Colombia"},
+          {"user": "yes"}
+        ]
+      },
+      "expected": {
+        "tools_sequence": [
+          ["update_state","validate_transfer"],
+          ["update_state","validate_transfer"],
+          ["submit_transfer"]
+        ],
+        "task": {"should_complete": 1},
+        "final_state": {
+          "recipient_name": "Luisa Pérez",
+          "country": "CO",
+          "amount": 200.0,
+          "currency": "USD",
+          "delivery_method": "cash_pickup",
+          "status": "done"
+        },
+        "ragas": {
+          "reference_answers": [
+            "You're about to send 200 USD to Luisa Pérez in Venezuela via cash pickup. Confirm? (yes / no)",
+            "You're about to send 200 USD to Luisa Pérez in Colombia via cash pickup. Confirm? (yes / no)",
+            "Transfer of 200 USD to Luisa Pérez in Colombia submitted successfully!"
+          ]
+        }
+      }
+    }
+
+
+  ]
+}
