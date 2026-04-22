@@ -335,7 +335,6 @@ Here’s a cleaner, more professional version with **fewer bullets** and a **fix
 
 ---
 
-```md id="limitations_section"
 ## ⚠️ 7 Limitations & Future Directions
 
 ### 7.1. Model Coverage
@@ -371,11 +370,11 @@ The evaluation focuses on technical correctness but does not capture business im
 
 A simple ROI metric could be defined as:
 
-```
+
 
 ROI = (Revenue - Cost) / Cost
 
-```
+
 
 Where revenue is driven by successful transactions and cost includes tokens and infrastructure.
 
@@ -397,7 +396,7 @@ The current evaluation is offline and does not reflect real-time system performa
 **Future direction:** implement continuous monitoring to track latency trends, tool failures, and user correction patterns, enabling ongoing optimization and early detection of issues.
 
 
-```
+
 
 
 
