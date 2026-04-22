@@ -3,7 +3,7 @@
 
 ## 1. Overview
 
-This project implements a **Stateful conversational agent[1]** for money transfers using the Google ADK framework.
+This project implements a **Stateful conversational agent [1] ** for money transfers using the Google ADK framework.
 
 The agent is designed to handle:
 
