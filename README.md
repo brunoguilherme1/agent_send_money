@@ -34,7 +34,7 @@ The system ensures **robust extraction under uncertainty**, following real-world
 
 `TransferState` is the single source of truth for the entire conversation. It stores all extracted fields (country, recipient, amount, currency, delivery method) and ensures that every value is valid before being persisted.
 
-It uses Pydantic validators to enforce business rules (e.g., amount limits, supported countries, full recipient name), and provides helper methods like `missing_fields()` and `safe_update()` to track progress and safely update the state. :contentReference[oaicite:0]{index=0}  
+It uses Pydantic validators to enforce business rules (e.g., amount limits, supported countries, full recipient name), and provides helper methods like `missing_fields()` and `safe_update()` to track progress and safely update the state. 
 
 This component is critical because it guarantees **data consistency and prevents invalid transactions from ever reaching the execution layer**.
 
@@ -49,7 +49,7 @@ Key operations include:
 - `next_field()` to guide the conversation  
 - `validate_transfer()` and `submit_transfer()` for final execution  
 
-Each function is atomic and returns structured outputs, allowing the LLM to reason about results safely. :contentReference[oaicite:1]{index=1}  
+Each function is atomic and returns structured outputs, allowing the LLM to reason about results safely. 
 
 This design enforces a **safe interaction pattern where the LLM decides *what* to do, but the system controls *how* it is done**.
 
