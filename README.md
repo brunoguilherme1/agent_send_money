@@ -342,8 +342,6 @@ Finally, there is a clear latency vs quality trade-off: Flash is ~20% faster but
 - Benchmark performance vs cost using smaller models  
 - Evaluate degradation in reasoning vs savings  
 
----
-
 ### 7.2. Adversarial Robustness (Not Fully Explored)
 
 Although no hard failures occurred, testing was limited.
@@ -367,8 +365,6 @@ Example:
   - Instruction override resistance  
   - Policy violation rate  
 
----
-
 ### 7.3. Evaluation Ecosystem Integration
 
 Current evaluation is custom-built.
@@ -382,8 +378,6 @@ Missing integration with:
   - Tool usage patterns  
   - Failure clusters  
   - Prompt drift over time  
-
----
 
 ### 7.4. Business Metrics (Missing KPI Layer)
 
@@ -406,8 +400,6 @@ Where:
 - Revenue = successful transfers * margin  
 - Cost = tokens + infrastructure  
 
----
-
 ### 7.5. A/B Testing (Model vs ROI)
 
 No A/B testing between models from a **business perspective**.
@@ -427,8 +419,6 @@ Future:
 - Run A/B tests comparing:
   - Gemini 3.2 vs Flash  
   - Metrics: latency, completion rate, user satisfaction  
-
----
 
 ### 7.6. Monitoring & Continuous Evaluation
 
