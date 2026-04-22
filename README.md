@@ -22,6 +22,9 @@ It collects the following fields:
 
 The system ensures **robust extraction under uncertainty**, following real-world conversational patterns described in the assignment .
 
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/27c5a74e-8fed-44dd-8e8c-ac1401fe096e" />
+
+
 ---
 
 ## 2. Architecture
