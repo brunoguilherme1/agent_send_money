@@ -338,7 +338,7 @@ Finally, there is a clear latency vs quality trade-off: Flash is ~20% faster but
 - Evaluation focused only on large models (Gemini family)  
 - Missing experiments with **small LLMs (e.g., Mistral, Phi, LLaMA small variants)**  
 
-👉 Future:
+ Future:
 - Benchmark performance vs cost using smaller models  
 - Evaluate degradation in reasoning vs savings  
 
@@ -359,7 +359,7 @@ Example:
 
 ```
 
-👉 Future:
+ Future:
 - Use tools like:
   - **SelfCheckGPT** (hallucination / consistency detection)
   - Adversarial test suites  
@@ -377,7 +377,7 @@ Missing integration with:
 - **LangSmith** → tracing, debugging, evaluation pipelines  
 - **Arize Phoenix** → observability, embeddings, drift detection  
 
-👉 Future:
+ Future:
 - Track:
   - Tool usage patterns  
   - Failure clusters  
@@ -396,7 +396,7 @@ Missing:
   - Drop-off rate  
   - Customer Lifetime Value (CLV)
 
-👉 Example:
+ Example:
 
 \[
 ROI = \frac{Revenue - Cost}{Cost}
@@ -416,14 +416,14 @@ Observation:
 - Flash is faster and cheaper  
 - Slightly worse in reasoning metrics  
 
-👉 Hypothesis:
+ Hypothesis:
 - Flash may outperform in **user-perceived experience**
 
 Supported by research:
 > Users often prefer faster responses over marginal quality gains  
 (e.g., human-computer interaction studies on latency perception)
 
-👉 Future:
+Future:
 - Run A/B tests comparing:
   - Gemini 3.2 vs Flash  
   - Metrics: latency, completion rate, user satisfaction  
@@ -438,7 +438,7 @@ Missing:
 - Real-time monitoring  
 - KPI tracking over time  
 
-👉 Future:
+ Future:
 - Build monitoring layer with:
   - Latency trends  
   - Tool failure rates  
