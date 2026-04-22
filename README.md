@@ -331,10 +331,6 @@ Finally, there is a clear latency vs quality trade-off: Flash is ~20% faster but
 
 ---
 
-Here’s a cleaner, more professional version with **fewer bullets** and a **fixed formula (no LaTeX)** 👇
-
----
-
 ## ⚠️ 7 Limitations & Future Directions
 
 ### 7.1. Model Coverage
