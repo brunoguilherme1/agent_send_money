@@ -87,7 +87,7 @@ This component is the **runtime engine**, enabling a true stateful, multi-turn i
 <img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/a6a962fb-3480-4ff2-abae-075365485573" />
 
 
-## 3 🧠 prompt.py — The Brain of the Agent
+## 3. prompt.py — The Brain of the Agent
 
 The `prompt.py` module defines the reasoning and decision policy that drives the behavior of the conversational agent. Rather than treating the LLM as a simple text generator, we structure it as a **stateful decision-making system**, where each response is conditioned on the current state, pending clarifications, and available actions.
 
@@ -134,7 +134,7 @@ This design enables the agent to:
 
 In practice, this transforms the LLM from a passive extractor into an **active decision-making agent**, capable of safely interacting with users in high-stakes scenarios such as financial transactions.
 
-#### 3.2 🔍 Token Classification as a Decision Primitive
+#### 3.2  Token Classification as a Decision Primitive
 
 The prompt was not designed in a single step. Instead, it was built iteratively, starting from simple extraction rules and evolving into a robust decision system through systematic testing of edge cases.
 
@@ -205,7 +205,7 @@ Rather than teaching answers, few-shots teach **how to think and act**, improvin
 ---
 
 
-## 📊 6 Evaluation — From Edge Cases to Metrics
+## 6. Evaluation — From Edge Cases to Metrics
 
 ### 6.1. Introduction
 
@@ -331,7 +331,7 @@ Finally, there is a clear latency vs quality trade-off: Flash is ~20% faster but
 
 ---
 
-## ⚠️ 7 Limitations & Future Directions
+## 7. Limitations & Future Directions
 
 ### 7.1. Model Coverage
 
