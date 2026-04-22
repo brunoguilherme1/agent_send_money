@@ -27,547 +27,322 @@ The system ensures **robust extraction under uncertainty**, following real-world
 
 ---
 
-## 2. Architecture
+## 2. Architecture (Core Components)
 
-### Core Components
 
-| Component       | Responsibility                                        |
-| --------------- | ----------------------------------------------------- |
-| `TransferState` | State management + validation                         |
-| `tools.py`      | Atomic operations (update, clarify, validate, submit) |
-| `prompt.py`     | Reasoning + decision policy                           |
-| `AgentRunner`   | Orchestration + execution loop                        |
+### 2.1. TransferState — State & Validation Layer
 
-### Flow
+`TransferState` is the single source of truth for the entire conversation. It stores all extracted fields (country, recipient, amount, currency, delivery method) and ensures that every value is valid before being persisted.
 
-```text
-User Input
-   ↓
-LLM (Prompt + Tools)
-   ↓
-Tool Calls (update / clarify / next_field)
-   ↓
-State Update
-   ↓
-Next Question / Confirmation
+It uses Pydantic validators to enforce business rules (e.g., amount limits, supported countries, full recipient name), and provides helper methods like `missing_fields()` and `safe_update()` to track progress and safely update the state. :contentReference[oaicite:0]{index=0}  
+
+This component is critical because it guarantees **data consistency and prevents invalid transactions from ever reaching the execution layer**.
+
+
+### 2.2. tools.py — Controlled Execution Layer
+
+The `tools.py` module defines all actions that the LLM is allowed to perform. Instead of directly modifying the state, the LLM must call these functions, ensuring that every operation is validated and controlled.
+
+Key operations include:
+- `update_state()` for saving confident values  
+- `clarify()` and `resolve_clarification()` for handling ambiguity  
+- `next_field()` to guide the conversation  
+- `validate_transfer()` and `submit_transfer()` for final execution  
+
+Each function is atomic and returns structured outputs, allowing the LLM to reason about results safely. :contentReference[oaicite:1]{index=1}  
+
+This design enforces a **safe interaction pattern where the LLM decides *what* to do, but the system controls *how* it is done**.
+
+### 2.3. prompt.py — Reasoning & Decision Engine
+
+The `prompt.py` module defines the behavior of the LLM. It includes the system prompt that instructs the model how to interpret user input, classify tokens, and decide which action to take.
+
+The logic is based on:
+- Token classification (CONFIDENT, UNSURE, INVALID)
+- Ambiguity rules (e.g., name vs country conflicts)
+- A strict turn loop (REFLECT → ACT → RESPOND)
+
+It also enforces constraints such as:
+- Never saving uncertain values directly  
+- Always asking clarification when ambiguity exists  
+- Only submitting after explicit confirmation  
+
+
+This component acts as the **decision-making brain**, transforming unstructured user input into structured actions.
+
+### 2.4. AgentRunner — Orchestration Layer
+
+`AgentRunner` is responsible for executing the full conversational loop. It connects the LLM, tools, and state into a working system.
+
+Its responsibilities include:
+- Receiving user input  
+- Building the LLM agent with current state + tools  
+- Executing tool calls returned by the LLM  
+- Updating and persisting the state  
+- Handling retries, errors, and session management  
+
+This component is the **runtime engine**, enabling a true stateful, multi-turn interaction instead of a simple stateless LLM call.
+
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/a6a962fb-3480-4ff2-abae-075365485573" />
+
+
+## 3 🧠 prompt.py — The Brain of the Agent
+
+The `prompt.py` module defines the reasoning and decision policy that drives the behavior of the conversational agent. Rather than treating the LLM as a simple text generator, we structure it as a **stateful decision-making system**, where each response is conditioned on the current state, pending clarifications, and available actions.
+
+Our design follows the principles of **stateful LLM-based agents**, as described in:
+
+> **Wu et al. (2023)** — *Stateful LLM-based Agents that can Interact with and Learn from Environments*  
+> (arXiv:2303.03926)
+
+In this paradigm, the agent maintains an internal state that evolves across turns and directly influences future decisions. The prompt injects:
+- The current structured state (what is already known)
+- Missing fields (what still needs to be collected)
+- Pending clarifications (ambiguities to resolve)
+- Available tools (actions the agent can take)
+
+This allows the LLM to operate in a **closed-loop system (state → reasoning → action → updated state)** instead of a stateless single-shot response.
+
+
+#### 3.1 🔍 Token Classification as a Decision Primitive
+
+A key innovation in our prompt design is the use of **token-level classification** to guide the agent’s behavior.
+
+Instead of directly extracting and saving all information, the model must first classify each piece of input into:
+
+- **CONFIDENT** → clear, valid, and unambiguous → can be safely stored  
+- **UNSURE** → ambiguous, partial, or malformed → requires clarification  
+- **INVALID** → violates business rules → must be rejected and corrected  
+
+This approach is inspired by structured extraction and uncertainty-aware NLP systems, particularly:
+
+> **Xiao et al. (2023)** — *InstructIE: A Unified Instruction-based Framework for Information Extraction*  
+> (explicit reasoning before extraction)
+
+Instead of naive slot filling, the model performs a **two-step process**:
+1. **Interpretation** → understand meaning and ambiguity  
+2. **Decision** → determine whether to save, ask, or reject  
+
+
+This design enables the agent to:
+
+- Handle **messy and real-world inputs** (e.g., "2OO", "1k", "Pedro Brazil")
+- Avoid **silent errors** (never guessing under ambiguity)
+- Maintain **data integrity** (only validated values are stored)
+- Support **multi-turn reasoning** with explicit clarification loops
+
+In practice, this transforms the LLM from a passive extractor into an **active decision-making agent**, capable of safely interacting with users in high-stakes scenarios such as financial transactions.
+
+#### 3.2 🔍 Token Classification as a Decision Primitive
+
+The prompt was not designed in a single step. Instead, it was built iteratively, starting from simple extraction rules and evolving into a robust decision system through systematic testing of edge cases.
+
+The core idea was to transform the LLM from a passive extractor into an **active decision-maker**, capable of handling ambiguity, corrections, and multi-turn reasoning.
+
+##### 3.2.1 Edge Cases → Prompt Refinement
+
+We stress-tested the system with hard cases:
+
+- `"send 200 brl to Chile Rodrigues Lima"`  
+- `"send 1000 or 2000 USD"`  
+- `"send to Lima"`
+
+These revealed that classification alone was not enough — the model still needed **explicit ambiguity handling**.
+
+
+##### 3.2.2 Ambiguity Rules
+
+We added deterministic rules to avoid guessing:
+
+- Never auto-assign ambiguous tokens  
+- Treat conflicts (e.g., *country vs name*) explicitly  
+- Generate clarification questions instead of assuming  
+Example:
 ```
+"Chile Rodrigues"
+→ could be country OR name → must clarify
+```
+
+##### 5.2.3. Turn Loop (Control)
+
+We enforced a strict reasoning loop:
+
+REFLECT → ACT → RESPOND
+
+- **REFLECT**: the model classifies all tokens (CONFIDENT / UNSURE / INVALID) and checks for pending clarifications  
+- **ACT**: the model decides exactly one action (e.g., `update_state`, `clarify`, `next_field`)  
+- **RESPOND**: the model produces a single, controlled output (usually one question)
+
+This loop is critical because it:
+- Prevents the model from doing multiple things at once (e.g., saving + asking + confirming)
+- Forces alignment between reasoning and tool execution
+- Guarantees a predictable, step-by-step interaction flow
+
+In practice, this transforms the LLM into a **deterministic controller**, not a free-form generator. :contentReference[oaicite:0]{index=0}  
 
 ---
 
-## 3. State Management
+##### 5.2.4. Few-Shots (Stability)
 
-The system uses a **strongly validated state object**:
+After defining rules and control flow, we added few-shot examples to stabilize behavior.
 
+These examples demonstrate:
+- How to apply token classification in real inputs  
+- How to handle ambiguity (e.g., name vs country)  
+- How to structure tool calls and responses  
+
+Few-shots are especially important because:
+- LLMs may interpret rules inconsistently without concrete examples  
+- They reduce variability across edge cases  
+- They reinforce the expected reasoning pattern (REFLECT → ACT → RESPOND)
+
+Rather than teaching answers, few-shots teach **how to think and act**, improving consistency in complex, real-world scenarios.
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/fe9040d7-abf4-455d-9ab2-a3664d0f4524" />
+
+
+---
+
+
+## 📊 6 Evaluation — From Edge Cases to Metrics
+
+### 6.1. Introduction
+
+The evaluation strategy was designed to validate the system under **real-world uncertainty**, not just ideal inputs.
+
+Instead of relying only on standard benchmarks, we built a **custom evaluation pipeline** focused on:
+- Ambiguity handling  
+- Multi-turn reasoning  
+- Robustness to noisy and adversarial inputs  
+
+
+### 6.2. Edge Case Generation (Stress Testing)
+
+The first step was creating structured **edge case test groups**, targeting each component of the system:
+
+- **A — Amount** → malformed formats (`2OO`, `1k`, `one thousand 500`)  
+- **B — Recipient** → ambiguity (`Maria Chile`, `Jordan Lima`)  
+- **C — Country** → variations (`Brasil`, `USA`, `Lima`)  
+- **D — Currency** → synonyms (`bucks`, `reais`, `pesos`)  
+- **E — Multi-turn / State** → corrections, multiple intents, resets  
+- **J — Adversarial** → prompt injection, malicious patterns  
+
+Example:
 ```python
-class TransferState(BaseModel):
-```
+{"group": "A2", "msg": "send 20xx0 USD to Maria Silva in Brazil"}
+{"group": "B2", "msg": "send 500 USD to Maria Chile"}
+{"group": "E4", "msg": "send 1000... actually 500 USD to Maria Silva"}
+````
 
-Key properties:
+These tests were used iteratively to **break the system and refine the prompt**, especially for:
 
-* Strict validation (country, amount, currency, etc.)
-* Missing field tracking
-* Clarification queue
+* Token classification
+* Ambiguity rules
+* Turn loop behavior
+
+
+### 6.3. Multi-Turn Evaluation (Conversation-Level)
+
+After stabilizing single-turn behavior, we moved to **multi-turn evaluation**, where correctness depends on the full interaction.
+
+Each test defines:
+
+* Input turns
+* Expected tool sequence
+* Final state
+* Expected responses
 
 Example:
 
-```python
-def missing_fields(self) -> List[str]:
+```json
+{
+  "test_id": "T03_malformed_amount",
+  "category": "amount",
+  "input": {
+    "turns": [
+      {"user": "Send 2OO USD to Maria Silva in Brazil via bank transfer"},
+      {"user": "200"},
+      {"user": "yes"}
+    ]
+  },
+  "expected": {
+    "tools_sequence": [
+      ["update_state","clarify"],
+      ["resolve_clarification"],
+      ["submit_transfer"]
+    ],
+    "task": {"should_complete": 1},
+    "final_state": {
+      "recipient_name": "Maria Silva",
+      "country": "BR",
+      "amount": 200.0,
+      "currency": "USD",
+      "delivery_method": "bank_transfer",
+      "status": "done"
+    }
+  }
+}
 ```
 
-This enables:
+This ensures the system is evaluated as a **stateful agent**, not just a single prediction.
 
-* Deterministic control flow
-* Safe updates (`safe_update`)
-* Clear progression to confirmation
 
-📌 This is a classic **slot-filling architecture**, extended with:
+### 6.4. Metrics
 
-* validation
-* correction handling
-* ambiguity resolution
-
----
-
-## 4. Core Techniques Used
-
-This system is NOT just a chatbot — it combines multiple **NLP + LLM reasoning techniques**.
-
----
-
-### 4.1 Slot Filling (Structured Extraction)
-
-**Idea:** Extract structured fields from free text.
-
-Used via:
-
-```python
-update_state(field, value)
-```
-
----
-
-### 4.2 Clarification Queue (Uncertainty Handling)
-
-Instead of guessing, the system explicitly models uncertainty:
-
-```python
-clarify(items=[...])
-```
-
-Key design:
-
-* Multiple ambiguities handled sequentially
-* Never overwrite uncertain values
-* Always ask 1 question per turn
-
----
-
-### 4.3 Self-Ask Reasoning (Core LLM Strategy)
-
-📌 Based on:
-
-Self-Ask With Search
-
-**Concept:**
-Break reasoning into intermediate questions.
-
-In your system:
-
-```text
-STEP 0 — Pending clarifications?
-STEP 1 — REFLECT
-STEP 2 — ACT
-```
-
-This is essentially **Self-Ask applied to structured extraction**:
-
-| Self-Ask Step      | Your Agent              |
-| ------------------ | ----------------------- |
-| Ask sub-question   | clarify()               |
-| Answer it          | resolve_clarification() |
-| Continue reasoning | next_field()            |
-
-💡 Example:
-
-User:
-
-> "Send 100 USD to Maria Ecuador"
-
-Agent reasoning:
-
-1. Is "Maria Ecuador" a name?
-2. Is "Ecuador" the country?
-
-→ Ask sequentially instead of guessing.
-
----
-
-### 4.4 Confidence-Based Extraction
-
-📌 Inspired by:
-
-Calibrating Model Confidence for Reliable AI Systems
-
-Your system explicitly defines:
-
-```text
-CONFIDENT → update_state()
-UNSURE → clarify()
-INVALID → reject
-```
-
-This is a **practical confidence calibration layer**, even without probabilities.
-
-| Level           | Action |
-| --------------- | ------ |
-| High confidence | Save   |
-| Medium          | Ask    |
-| Low / invalid   | Reject |
-
-💡 This avoids:
-
-* hallucinations
-* silent errors
-* wrong assumptions
-
----
-
-### 4.5 Rule-Based Disambiguation Layer
-
-You implemented **deterministic rules on top of LLM reasoning**:
-
-Example:
-
-```text
-Rule 1 — Country vs surname ambiguity
-```
-
-This is critical in production systems:
-
-* LLM = flexible understanding
-* Rules = safety constraints
-
----
-
-### 4.6 Incremental State Update (Streaming Understanding)
-
-The agent supports:
-
-* partial inputs
-* corrections
-* late information
-
-Example:
-
-```text
-"Send 200 USD"
-→ later: "to Maria"
-→ later: "in Brazil"
-```
-
-This is similar to:
-
-📌 **Incremental parsing systems** in NLP
-
----
-
-### 4.7 Tool-Augmented LLM (Agent Pattern)
-
-📌 Based on:
-
-ReAct: Synergizing Reasoning and Acting
-
-Your system follows:
-
-```text
-THINK → ACT → OBSERVE
-```
-
-Example:
-
-```text
-REFLECT → ACT → Tool result → Next step
-```
-
-Tools:
-
-* `update_state`
-* `clarify`
-* `resolve_clarification`
-* `next_field`
-
-This is a **controlled agent loop**, not free-form generation.
-
----
-
-## 5. Ambiguity Handling (Key Innovation)
-
-The system explicitly models **real-world ambiguity cases**:
-
-### Example: Country vs Name
-
-```text
-"Maria Ecuador"
-```
-
-Handled as:
-
-```python
-clarify([
-  {field:"recipient_name", ...},
-  {field:"country", ...}
-])
-```
-
----
-
-### Example: Malformed Amount
-
-```text
-"2OO"
-```
-
-Handled as:
-
-```text
-Did you mean 200?
-```
-
----
-
-### Example: Multiple Transfers
-
-```text
-"send 200 to Marcos and 300 to Maria"
-```
-
-→ system refuses and clarifies
-
----
-
-## 6. Validation Layer
-
-All values pass through strict validators:
-
-```python
-@field_validator("amount")
-```
-
-Ensures:
-
-* amount > 0
-* amount ≤ 10,000
-* valid currency
-* valid country
-
----
-
-## 7. Conversation Control
-
-The system enforces:
-
-* **One question per turn**
-* No hidden reasoning exposed
-* Deterministic flow
-
-From prompt:
-
-```text
-- One question per turn. Always.
-- 1–2 sentences.
-```
-
----
-
-## 8. Agent Execution Loop
-
-From `AgentRunner` :
-
-### Key features:
-
-* Retry logic (503 / 429)
-* Loop breaker for tool misuse
-* Session persistence
-* Tool tracing
-
----
-
-## 9. Strengths of This Design
-
-### ✅ Production-ready characteristics
-
-* Deterministic + LLM hybrid
-* Explicit uncertainty handling
-* Safe updates (no silent overwrites)
-* Robust to messy inputs
-* Modular tools
-
----
-
-Got it — here is exactly what you need: **clean `.md`, interview-ready, focused, didactic, and structured like a story**.
-
----
-
-# 📄 Evaluation Strategy — Send Money Agent
-
-## 🎯 How we evaluate the agent
-
-To evaluate the agent, we use the following metrics:
-
----
-
-## 📊 Metrics Used
+We defined metrics across three dimensions:
 
 | Category                 | Metric               | What it Measures                                 |
 | ------------------------ | -------------------- | ------------------------------------------------ |
 | **Deterministic (Core)** | State Accuracy       | Final correctness of extracted fields            |
 |                          | Task Completion      | Whether the flow ended correctly                 |
 |                          | Extraction Precision | If information was extracted at the right moment |
-|                          | Tool Call Accuracy   | Correct usage of tools (update, clarify, etc.)   |
+|                          | Tool Call Accuracy   | Correct usage of tools                           |
 |                          | Correction Fidelity  | Proper handling of user corrections              |
-| **LLM Behavior**         | Response Discipline  | Quality and control of responses                 |
+| **LLM Behavior**         | Response Discipline  | Controlled and structured responses              |
 |                          | Robustness           | Resistance to noisy/adversarial inputs           |
 | **System**               | Latency              | Response time                                    |
 |                          | Token Usage          | Cost efficiency                                  |
 
 ---
 
-## 🧠 Why we chose these metrics
+### 6.5. Results
 
-We chose these metrics because they reflect **real-world requirements of an agent system**, not just NLP quality.
+We evaluated two models:
 
-### 1. Deterministic metrics → Business safety
+#### Gemini 3.2
 
-Metrics like:
+| Metric               | Value      |
+| -------------------- | ---------- |
+| State Accuracy       | **1.00**   |
+| Task Completion      | **1.00**   |
+| Extraction Precision | **1.00**   |
+| Tool Call Accuracy   | **0.97**   |
+| Correction Fidelity  | **1.00**   |
+| Response Discipline  | **0.72**   |
+| Hard Fail Rate       | **0.00**   |
+| Latency (ms)         | **27,277** |
 
-* State Accuracy
-* Task Completion
-* Correction Fidelity
+#### Gemini Flash
 
-are critical because this is a **transactional system**.
+| Metric               | Value      |
+| -------------------- | ---------- |
+| State Accuracy       | **1.00**   |
+| Task Completion      | **1.00**   |
+| Extraction Precision | **1.00**   |
+| Tool Call Accuracy   | **0.92**   |
+| Correction Fidelity  | **1.00**   |
+| Response Discipline  | **0.69**   |
+| Hard Fail Rate       | **0.00**   |
+| Latency (ms)         | **22,277** |
 
-👉 In this context:
 
-```text
-A small mistake = a financial error
-```
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/ba963426-7a31-4866-bdcf-990564aae388" />
 
-So we need **strict, binary guarantees**, not probabilistic ones.
 
----
 
-### 2. Temporal + behavioral metrics → UX quality
-
-Metrics like:
-
-* Extraction Precision
-* Tool Call Accuracy
-
-capture something more subtle:
-
-```text
-“How efficiently and correctly the agent understands and acts”
-```
-
-👉 Example:
-
-* Extracting "USD" late = bad UX
-* Asking unnecessary questions = friction
-
-These metrics ensure the agent behaves like a **smart assistant, not a form**
 
 ---
 
-### 3. LLM-as-Judge metrics → Conversational control
 
-Metrics like:
 
-* Response Discipline
-* Robustness
-
-are evaluated using an LLM-as-judge approach (similar to AgentBench).
-
-👉 Why?
-
-Because some properties cannot be measured deterministically:
-
-* Is the response concise?
-* Did it follow the “one question” rule?
-* Did it leak internal reasoning?
-
-These require **semantic evaluation**, not rules.
-
----
-
-### 4. Inspired by modern evaluation frameworks
-
-This evaluation design is inspired by:
-
-* AgentBench → evaluating agents across reasoning + action
-* On Calibration of Modern Neural Networks → importance of controlling overconfident generation
-
-👉 Key idea:
-
-```text
-We separate “correctness” from “behavior”
-```
-
----
-
-## 🚀 How we evaluated the agent
-
-We built a **multi-turn test suite** covering:
-
-* ambiguity cases
-* corrections
-* missing information
-* control flows (cancel, restart)
-
-Then we:
-
-1. Ran the agent across all test cases
-2. Logged full traces (state + tool calls) 
-3. Computed metrics using a two-layer evaluator 
-
----
-
-## 📊 Results
-
-### 🌍 Global Metrics
-
-| Metric                   | Value      |
-| ------------------------ | ---------- |
-| **State Accuracy**       | **1.00**   |
-| **Task Completion**      | **1.00**   |
-| **Extraction Precision** | **1.00**   |
-| **Tool Call Accuracy**   | **0.97**   |
-| **Correction Fidelity**  | **1.00**   |
-| **Response Discipline**  | **0.69**   |
-| **Hard Fail Rate**       | **0.00**   |
-| **Latency (ms)**         | **22,277** |
-
----
-
-### 🧪 Key Observations
-
-#### ✅ Strengths
-
-* **Perfect correctness (1.0 across all core metrics)**
-* No hard failures → system is **production-safe**
-* Strong handling of:
-
-  * ambiguity
-  * corrections
-  * multi-turn flows
-
----
-
-#### ⚠️ Weakness
-
-* **Response Discipline = 0.69**
-
-👉 This means:
-
-* Sometimes asks more than one question
-* Slight verbosity
-* Minor deviations from prompt rules
-
----
-
-## 🧠 Final Insight (What this shows)
-
-This evaluation proves that:
-
-```text
-The agent is structurally correct and robust,
-but still behaves like a typical LLM in generation.
-```
-
-👉 In other words:
-
-* ✅ Logic layer = strong (deterministic + tools)
-* ⚠️ Language layer = needs refinement
-
----
-
-## 🏁 Final Takeaway (Interview-ready)
-
-> We designed the evaluation to separate **hard correctness (must be perfect)** from **LLM behavior (can be optimized)**.
->
-> This allows us to ensure the system is **safe for production**, while still improving the conversational quality over time.
-
----
-
-## 11. References
-
-* Self-Ask With Search
-* ReAct: Synergizing Reasoning and Acting
-* Calibrating Model Confidence for Reliable AI Systems
-
----
-
-If you want next step, I can:
-
-👉 turn this into **interview-ready explanation (5 min pitch)**
-👉 or map each part to **AgentBench / RAGAS evaluation metrics**
-👉 or generate a **diagram (system design style)**
