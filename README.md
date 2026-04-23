@@ -391,12 +391,160 @@ The current evaluation is offline and does not reflect real-time system performa
 
 **Future direction:** implement continuous monitoring to track latency trends, tool failures, and user correction patterns, enabling ongoing optimization and early detection of issues.
 
+---
 
+Got it — you want a **README focused on running BOTH**:
 
+👉 ✅ Backend (`api/app.py`)
+👉 ✅ Frontend (`ui/app_ui.py` - Streamlit)
 
-
+Let’s fix your README properly 👇
 
 ---
+# 8. How to Run
+
+This project has **two main components**:
+
+* 🔧 **Backend API** → FastAPI (`api/app.py`)
+* 🖥️ **Frontend UI** → Streamlit (`ui/app_ui.py`)
+
+They must run **in parallel**.
+
+## ⚙️ 1. Setup
+
+### 1.1 Create environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Mac/Linux
+.venv\Scripts\activate      # Windows
+```
+### 1.2 Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 1.3 Environment variables
+
+Create `.env`:
+
+```env
+GOOGLE_API_KEY=your_api_key_here
+```
+
+## 🔧 2. Run Backend (FastAPI)
+
+From project root:
+
+```bash
+uvicorn api.app:app --reload --port 8000
+```
+
+✅ Backend running at:
+
+```
+http://localhost:8000
+```
+
+## 🖥️ 3. Run Frontend (Streamlit)
+
+Open a **new terminal** (important ⚠️)
+
+```bash
+streamlit run ui/app_ui.py
+```
+
+✅ UI running at:
+
+```
+http://localhost:8501
+```
+
+## 🔗 4. How They Connect
+
+* Streamlit UI sends requests → FastAPI backend
+* Backend runs:
+
+  * Agent logic
+  * State management
+  * Tool execution
+
+👉 Make sure backend is running BEFORE opening UI
+
+## 🧪 5. Example Flow
+
+1. Open UI → `http://localhost:8501`
+2. Send:
+
+```
+send 200 USD to Maria Silva in Brazil via bank transfer
+```
+
+3. Backend:
+
+   * Extracts fields
+   * Validates
+   * Asks clarification if needed
+
+## 🐳 6. Run with Docker (Optional)
+
+If using Docker:
+
+```bash
+docker-compose up --build
+```
+
+## 🧠 Architecture Overview
+
+```text
+Streamlit UI (ui/app_ui.py)
+        ↓
+FastAPI Backend (api/app.py)
+        ↓
+Agent Runner (adapters/adk_agent.py)
+        ↓
+Core Logic (prompt.py, tools.py, state.py)
+```
+
+## ⚠️ Common Issues
+
+### ❌ UI not working
+
+→ Check backend is running
+
+### ❌ CORS error
+
+→ Add in FastAPI if needed:
+
+```python
+from fastapi.middleware.cors import CORSMiddleware
+```
+
+### ❌ Port already in use
+
+```bash
+lsof -i :8000
+kill -9 <PID>
+```
+
+---
+
+## 👨‍💻 Dev Tip (Important)
+
+Run both services like this:
+
+```bash
+# Terminal 1
+uvicorn api.app:app --reload
+
+# Terminal 2
+streamlit run ui/app_ui.py
+```
+
+---
+
+
 
 
 
