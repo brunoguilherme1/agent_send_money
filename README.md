@@ -140,7 +140,7 @@ The `prompt.py` module defines the reasoning and decision policy that drives the
 
 Our design follows the principles of **stateful LLM-based agents**, as described in:
 
-> **Hou et al. (2024)** — *Measuring and Narrowing the Compositionality Gap in Language Models*
+> **Hou et al. (2025)** — *EnvScaler: Scaling Tool-Interactive Environments for LLM Agent via Programmatic Synthesis*
 
 In this paradigm, the agent maintains an internal state that evolves across turns and directly influences future decisions. The prompt injects:
 
@@ -165,6 +165,7 @@ This approach is inspired by structured extraction and uncertainty-aware NLP sys
 
 > **Zhout et al. (2023)** — *LEAST-TO-MOST PROMPTING ENABLES COMPLEX
 REASONING IN LARGE LANGUAGE MODELS*
+> **Zhout et al. (2024)** — *Measuring and Narrowing the Compositionality Gap in Language Models*
 
 Instead of naive slot filling, the model performs a **two-step process**:
 
