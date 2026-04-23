@@ -507,9 +507,24 @@ The evaluation pipeline has **3 steps**:
 2. ▶️ Run **conversation test suite**
 3. 📊 Run **final evaluation metrics**
 
----
 
-## 🔍 1. Run Edge Cases
+The evaluation pipeline should be run in a **separate environment** to avoid conflicts with the main app.
+
+### 📦 1. Create Evaluation Environment
+
+```bash
+python -m venv .venv-eval
+source .venv-eval/bin/activate   # Mac/Linux
+.venv-eval\Scripts\activate      # Windows
+```
+Inside the `eval/` folder you have a dedicated `requirements.txt`.
+
+Install it:
+
+```bash
+pip install -r eval/requirements.txt
+```
+### 🔍  Run Edge Cases
 
 This step tests **single-turn robustness** with noisy, malformed, and adversarial inputs.
 
@@ -528,23 +543,18 @@ Each test is **simple and atomic**:
   "msg": "send 2OO USD to Maria Silva in Brazil"
 }
 ```
-
-### 📁 Output
-
 Generates a file like:
 
 ```bash
 results_YYYYMMDD_HHMMSS.json
 ```
-## ▶️ 2. Run Conversation Test Suite
+### Run Conversation Test Suite
 
 This step evaluates **multi-turn behavior** (state, corrections, control flow).
 
 ```bash
 python eval/test_cv.py
 ```
-
-### 🧾 Conversation JSON Structure
 
 Each test is **multi-turn + expected behavior**:
 
@@ -578,15 +588,13 @@ Each test is **multi-turn + expected behavior**:
 }
 ```
 
-### 📁 Output
+Output
 
 ```bash
 eval/results/run_<timestamp>.json
 ```
 
----
-
-## 📊 3. Run Final Evaluation
+## Run Final Evaluation
 
 After generating results:
 
@@ -602,6 +610,16 @@ eval/results/evaluation_final.json
 
 
 ## 📈 Metrics
+
+
+---
+
+
+
+
+
+
+
 
 
 
