@@ -634,6 +634,20 @@ Output:
 ```bash
 eval/results/evaluation_final.json
 ```
+#### Final Evaluation Output (JSON)
+
+```json
+{
+  "state_accuracy": 1.0,
+  "task_completion": 1.0,
+  "extraction_precision": 1.0,
+  "tool_call_accuracy": 0.916,
+  "correction_fidelity": 1.0,
+  "response_discipline": 0.614,
+  "hard_fail_rate": 0.0,
+  "latency_ms": 10301.594,
+}
+```
 
 ## 8. Demo
 
