@@ -659,14 +659,8 @@ The agent will:
 * Ask for confirmation
 * Execute safely
 
-### 8.3 What This Shows
 
-* Stateful multi-turn reasoning
-* Robust parsing of messy inputs
-* Safe, tool-based execution
-* Production deployment on GCP
-
-### 8.4 Architecture
+### 8.3 Architecture
 
 ```text
 Client → Cloud Run (FastAPI) → Agent (LLM + Tools + State)
