@@ -384,7 +384,7 @@ The current evaluation is offline and does not reflect real-time system performa
 **Future direction:** implement continuous monitoring to track latency trends, tool failures, and user correction patterns, enabling ongoing optimization and early detection of issues.
 
 ---
-# 8. How to Run
+## 8. How to Run
 
 This project has **two main components**:
 
@@ -577,9 +577,9 @@ eval/results/evaluation_final.json
 ```
 ---
 
-# 🎬 Demo
+## 🎬 Demo
 
-## 🌐 Live Demo (GCP)
+### 🌐 Live Demo (GCP)
 
 The backend is deployed on **Google Cloud Run**:
 
@@ -590,7 +590,7 @@ The backend is deployed on **Google Cloud Run**:
 * Runs the full agent (LLM + tools + state)
 
 
-## 🧪 Quick Test
+### 🧪 Quick Test
 
 You can interact via UI or any HTTP client.
 
