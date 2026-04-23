@@ -440,6 +440,7 @@ streamlit run ui/app_ui.py
 
 <img width="2258" height="1292" alt="image" src="https://github.com/user-attachments/assets/12ac3051-e3c5-4439-8bc2-dface4cee2e5" />
 
+
 ## 🐳 Run with Docker
 
 This project uses **Docker Compose** to run both:
