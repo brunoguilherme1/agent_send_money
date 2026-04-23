@@ -380,8 +380,6 @@ The evaluation highlights a clear separation between deterministic correctness a
 
 Differences appear in the LLM behavior layer, particularly in **tool selection** and **response discipline**. Gemini 3.2 shows slightly better reasoning consistency (`0.97` vs. `0.92` in tool accuracy), while both models struggle with strict response constraints (around `0.7`), which depend heavily on prompt adherence rather than core logic. Importantly, both models achieved a `0.00` hard fail rate, indicating strong robustness against noisy inputs and adversarial patterns, validating the safety of the overall design.
 
-Finally, there is a clear latency-versus-quality trade-off: Flash is about **20% faster** but slightly less consistent in reasoning. This reinforces a key architectural insight: **correctness is enforced by the system, while quality is driven by the LLM**, allowing flexible model selection based on cost, latency, or user experience without compromising safety.
-
 ## 5. Limitations & Future Directions
 
 ### 5.1 Model Coverage
