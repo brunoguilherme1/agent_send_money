@@ -179,9 +179,8 @@ This loop is critical because it:
 - Forces alignment between reasoning and tool execution
 - Guarantees a predictable, step-by-step interaction flow
 
-In practice, this transforms the LLM into a **deterministic controller**, not a free-form generator. :contentReference[oaicite:0]{index=0}  
+In practice, this transforms the LLM into a **deterministic controller**, not a free-form generator.
 
----
 
 ##### 5.2.4. Few-Shots (Stability)
 
@@ -200,7 +199,6 @@ Few-shots are especially important because:
 Rather than teaching answers, few-shots teach **how to think and act**, improving consistency in complex, real-world scenarios.
 
 <img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/fe9040d7-abf4-455d-9ab2-a3664d0f4524" />
-
 
 ---
 
@@ -284,9 +282,7 @@ Example:
   }
 }
 ```
-
 This ensures the system is evaluated as a **stateful agent**, not just a single prediction.
-
 
 ### 6.4. Metrics
 
@@ -366,11 +362,7 @@ The evaluation focuses on technical correctness but does not capture business im
 
 A simple ROI metric could be defined as:
 
-
-
 ROI = (Revenue - Cost) / Cost
-
-
 
 Where revenue is driven by successful transactions and cost includes tokens and infrastructure.
 
@@ -390,15 +382,6 @@ There was no A/B testing comparing models from a business perspective. While Fla
 The current evaluation is offline and does not reflect real-time system performance.
 
 **Future direction:** implement continuous monitoring to track latency trends, tool failures, and user correction patterns, enabling ongoing optimization and early detection of issues.
-
----
-
-Got it — you want a **README focused on running BOTH**:
-
-👉 ✅ Backend (`api/app.py`)
-👉 ✅ Frontend (`ui/app_ui.py` - Streamlit)
-
-Let’s fix your README properly 👇
 
 ---
 # 8. How to Run
@@ -457,20 +440,12 @@ streamlit run ui/app_ui.py
 
 <img width="2258" height="1292" alt="image" src="https://github.com/user-attachments/assets/12ac3051-e3c5-4439-8bc2-dface4cee2e5" />
 
-
-
-Got it — here’s a **clean README section focused ONLY on running with Docker** (backend + frontend together, no noise):
-
----
-
 ## 🐳 Run with Docker
 
 This project uses **Docker Compose** to run both:
 
 * 🔧 FastAPI Backend (`api/app.py`)
 * 🖥️ Streamlit Frontend (`ui/app_ui.py`)
-
----
 
 ### 📦 1. Build & Start
 
@@ -493,11 +468,6 @@ Once containers are running:
 ```bash
 docker-compose down
 ```
----
-
-Perfect — here’s the **final clean README section for evaluation**, structured exactly how you want:
-
----
 
 # 🧪 Run Evaluation
 
@@ -588,8 +558,6 @@ Each test is **multi-turn + expected behavior**:
 }
 ```
 
-Output
-
 ```bash
 eval/results/run_<timestamp>.json
 ```
@@ -601,15 +569,11 @@ After generating results:
 ```bash
 python eval/evaluation.py
 ```
-
-### 📁 Output
+ 📁 Output
 
 ```bash
 eval/results/evaluation_final.json
 ```
-
-
-## 📈 Metrics
 
 
 ---
