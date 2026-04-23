@@ -580,7 +580,7 @@ eval/results/evaluation_final.json
 ## 🎬 Demo
 
 <p align="center">
-  <img src="./assets/Screen Recording 2026-04-22 at 23.17.12.gif" width="800"/>
+  <img src="./assets/mov.gif" width="800"/>
 </p>
 
 ---
