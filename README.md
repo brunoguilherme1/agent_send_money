@@ -455,94 +455,155 @@ Open a **new terminal** (important ⚠️)
 streamlit run ui/app_ui.py
 ```
 
-✅ UI running at:
+<img width="2258" height="1292" alt="image" src="https://github.com/user-attachments/assets/12ac3051-e3c5-4439-8bc2-dface4cee2e5" />
 
-```
-http://localhost:8501
-```
 
-## 🔗 4. How They Connect
 
-* Streamlit UI sends requests → FastAPI backend
-* Backend runs:
+Got it — here’s a **clean README section focused ONLY on running with Docker** (backend + frontend together, no noise):
 
-  * Agent logic
-  * State management
-  * Tool execution
+---
 
-👉 Make sure backend is running BEFORE opening UI
+## 🐳 Run with Docker
 
-## 🧪 5. Example Flow
+This project uses **Docker Compose** to run both:
 
-1. Open UI → `http://localhost:8501`
-2. Send:
+* 🔧 FastAPI Backend (`api/app.py`)
+* 🖥️ Streamlit Frontend (`ui/app_ui.py`)
 
-```
-send 200 USD to Maria Silva in Brazil via bank transfer
-```
+---
 
-3. Backend:
+### 📦 1. Build & Start
 
-   * Extracts fields
-   * Validates
-   * Asks clarification if needed
-
-## 🐳 6. Run with Docker (Optional)
-
-If using Docker:
+From the project root:
 
 ```bash
 docker-compose up --build
 ```
 
-## 🧠 Architecture Overview
+### 🌐 2. Access the Applications
 
-```text
-Streamlit UI (ui/app_ui.py)
-        ↓
-FastAPI Backend (api/app.py)
-        ↓
-Agent Runner (adapters/adk_agent.py)
-        ↓
-Core Logic (prompt.py, tools.py, state.py)
-```
+Once containers are running:
 
-## ⚠️ Common Issues
+* 🔧 Backend API → [http://localhost:8000](http://localhost:8000)
+* 🖥️ Frontend UI → [http://localhost:8501](http://localhost:8501)
 
-### ❌ UI not working
 
-→ Check backend is running
-
-### ❌ CORS error
-
-→ Add in FastAPI if needed:
-
-```python
-from fastapi.middleware.cors import CORSMiddleware
-```
-
-### ❌ Port already in use
+### 🛑 3. Stop Services
 
 ```bash
-lsof -i :8000
-kill -9 <PID>
+docker-compose down
+```
+---
+
+Perfect — here’s the **final clean README section for evaluation**, structured exactly how you want:
+
+---
+
+# 🧪 Run Evaluation
+
+The evaluation pipeline has **3 steps**:
+
+1. 🔍 Run **edge cases** (stress testing)
+2. ▶️ Run **conversation test suite**
+3. 📊 Run **final evaluation metrics**
+
+---
+
+## 🔍 1. Run Edge Cases
+
+This step tests **single-turn robustness** with noisy, malformed, and adversarial inputs.
+
+```bash
+python eval/test_edge_cases.py
+```
+
+### 🧾 Edge Cases JSON Structure
+
+Each test is **simple and atomic**:
+
+```json
+{
+  "group": "A",
+  "label": "A02_letter_O_in_amount",
+  "msg": "send 2OO USD to Maria Silva in Brazil"
+}
+```
+
+### 📁 Output
+
+Generates a file like:
+
+```bash
+results_YYYYMMDD_HHMMSS.json
+```
+## ▶️ 2. Run Conversation Test Suite
+
+This step evaluates **multi-turn behavior** (state, corrections, control flow).
+
+```bash
+python eval/test_cv.py
+```
+
+### 🧾 Conversation JSON Structure
+
+Each test is **multi-turn + expected behavior**:
+
+```json
+{
+  "test_id": "T10_double_yes_name_and_country",
+  "category": "ambiguity",
+  "input": {
+    "turns": [
+      {"user": "send 500 USD to Maria Chile via bank deposit"},
+      {"user": "yes that's the name and yes Chile is the country"},
+      {"user": "yes"}
+    ]
+  },
+  "expected": {
+    "tools_sequence": [
+      ["update_state","clarify"],
+      ["resolve_clarification","validate_transfer"],
+      ["submit_transfer"]
+    ],
+    "task": {"should_complete": 1},
+    "final_state": {
+      "recipient_name": "Maria Chile",
+      "country": "CL",
+      "amount": 500.0,
+      "currency": "USD",
+      "delivery_method": "bank_deposit",
+      "status": "done"
+    }
+  }
+}
+```
+
+### 📁 Output
+
+```bash
+eval/results/run_<timestamp>.json
 ```
 
 ---
 
-## 👨‍💻 Dev Tip (Important)
+## 📊 3. Run Final Evaluation
 
-Run both services like this:
+After generating results:
 
 ```bash
-# Terminal 1
-uvicorn api.app:app --reload
-
-# Terminal 2
-streamlit run ui/app_ui.py
+python eval/evaluation.py
 ```
 
----
+### 📁 Output
+
+```bash
+eval/results/evaluation_final.json
+```
+
+
+## 📈 Metrics
+
+
 
 
 
