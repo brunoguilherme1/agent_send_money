@@ -1,9 +1,56 @@
+# 📄 Send Money Agent — Technical Documentation 
 
-# 📄 Send Money Agent — Technical Documentation
+## Table of Contents
+
+* [1. Overview](#1-overview)
+* [2. Architecture (Core Components)](#2-architecture-core-components)
+
+  * [2.1 TransferState — State & Validation Layer](#21-transferstate--state--validation-layer)
+  * [2.2 tools.py — Controlled Execution Layer](#22-toolspy--controlled-execution-layer)
+  * [2.3 prompt.py — Reasoning & Decision Engine](#23-promptpy--reasoning--decision-engine)
+  * [2.4 AgentRunner — Orchestration Layer](#24-agentrunner--orchestration-layer)
+* [3. prompt.py — The Brain of the Agent](#3-promptpy--the-brain-of-the-agent)
+
+  * [3.1 Token Classification as a Decision Primitive](#31-token-classification-as-a-decision-primitive)
+  * [3.2 Prompt Evolution Through Edge Cases](#32-prompt-evolution-through-edge-cases)
+* [4. Evaluation — From Edge Cases to Metrics](#4-evaluation--from-edge-cases-to-metrics)
+
+  * [4.1 Introduction](#41-introduction)
+  * [4.2 Edge Case Generation (Stress Testing)](#42-edge-case-generation-stress-testing)
+  * [4.3 Multi-Turn Evaluation (Conversation-Level)](#43-multi-turn-evaluation-conversation-level)
+  * [4.4 Metrics](#44-metrics)
+  * [4.5 Results](#45-results)
+* [5. Limitations & Future Directions](#5-limitations--future-directions)
+
+  * [5.1 Model Coverage](#51-model-coverage)
+  * [5.2 Adversarial Robustness](#52-adversarial-robustness)
+  * [5.3 Evaluation Ecosystem Integration](#53-evaluation-ecosystem-integration)
+  * [5.4 Business Metrics (KPI Layer)](#54-business-metrics-kpi-layer)
+  * [5.5 A/B Testing (Model vs ROI)](#55-ab-testing-model-vs-roi)
+  * [5.6 Monitoring & Continuous Evaluation](#56-monitoring--continuous-evaluation)
+* [6. How to Run](#6-how-to-run)
+
+  * [6.1 Setup](#61-setup)
+  * [6.2 Run Backend (FastAPI)](#62-run-backend-fastapi)
+  * [6.3 Run Frontend (Streamlit)](#63-run-frontend-streamlit)
+  * [6.4 Run with Docker](#64-run-with-docker)
+* [7. Run Evaluation](#7-run-evaluation)
+
+  * [7.1 Create Evaluation Environment](#71-create-evaluation-environment)
+  * [7.2 Run Edge Cases](#72-run-edge-cases)
+  * [7.3 Edge Cases JSON Structure](#73-edge-cases-json-structure)
+  * [7.4 Run Conversation Test Suite](#74-run-conversation-test-suite)
+  * [7.5 Run Final Evaluation](#75-run-final-evaluation)
+* [8. Demo](#8-demo)
+
+  * [8.1 Live Demo (GCP)](#81-live-demo-gcp)
+  * [8.2 Quick Test](#82-quick-test)
+  * [8.3 What This Shows](#83-what-this-shows)
+  * [8.4 Architecture](#84-architecture)
 
 ## 1. Overview
 
-This project implements a **Stateful conversational agent** for money transfers using the Google ADK framework.
+This project implements a **stateful conversational agent** for money transfers using the Google ADK framework.
 
 The agent is designed to handle:
 
@@ -20,72 +67,72 @@ It collects the following fields:
 * `currency`
 * `delivery_method`
 
-The system ensures **robust extraction under uncertainty**, following real-world conversational patterns described in the assignment .
+The system ensures **robust extraction under uncertainty**, following real-world conversational patterns described in the assignment.
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/27c5a74e-8fed-44dd-8e8c-ac1401fe096e" />
-
-
----
+<p align="center">
+  <img width="1536" height="1024" alt="System overview" src="https://github.com/user-attachments/assets/27c5a74e-8fed-44dd-8e8c-ac1401fe096e" />
+</p>
 
 ## 2. Architecture (Core Components)
 
+### 2.1 TransferState — State & Validation Layer
 
-### 2.1. TransferState — State & Validation Layer
+`TransferState` is the single source of truth for the entire conversation. It stores all extracted fields (`country`, `recipient_name`, `amount`, `currency`, and `delivery_method`) and ensures that every value is valid before being persisted.
 
-`TransferState` is the single source of truth for the entire conversation. It stores all extracted fields (country, recipient, amount, currency, delivery method) and ensures that every value is valid before being persisted.
-
-It uses Pydantic validators to enforce business rules (e.g., amount limits, supported countries, full recipient name), and provides helper methods like `missing_fields()` and `safe_update()` to track progress and safely update the state. 
+It uses Pydantic validators to enforce business rules, such as amount limits, supported countries, and full recipient names. It also provides helper methods like `missing_fields()` and `safe_update()` to track progress and safely update the state.
 
 This component is critical because it guarantees **data consistency and prevents invalid transactions from ever reaching the execution layer**.
 
-
-### 2.2. tools.py — Controlled Execution Layer
+### 2.2 tools.py — Controlled Execution Layer
 
 The `tools.py` module defines all actions that the LLM is allowed to perform. Instead of directly modifying the state, the LLM must call these functions, ensuring that every operation is validated and controlled.
 
 Key operations include:
-- `update_state()` for saving confident values  
-- `clarify()` and `resolve_clarification()` for handling ambiguity  
-- `next_field()` to guide the conversation  
-- `validate_transfer()` and `submit_transfer()` for final execution  
 
-Each function is atomic and returns structured outputs, allowing the LLM to reason about results safely. 
+* `update_state()` for saving confident values
+* `clarify()` and `resolve_clarification()` for handling ambiguity
+* `next_field()` to guide the conversation
+* `validate_transfer()` and `submit_transfer()` for final execution
 
-This design enforces a **safe interaction pattern where the LLM decides *what* to do, but the system controls *how* it is done**.
+Each function is atomic and returns structured outputs, allowing the LLM to reason about results safely.
 
-### 2.3. prompt.py — Reasoning & Decision Engine
+This design enforces a **safe interaction pattern in which the LLM decides *what* to do, but the system controls *how* it is done**.
+
+### 2.3 prompt.py — Reasoning & Decision Engine
 
 The `prompt.py` module defines the behavior of the LLM. It includes the system prompt that instructs the model how to interpret user input, classify tokens, and decide which action to take.
 
 The logic is based on:
-- Token classification (CONFIDENT, UNSURE, INVALID)
-- Ambiguity rules (e.g., name vs country conflicts)
-- A strict turn loop (REFLECT → ACT → RESPOND)
+
+* Token classification (`CONFIDENT`, `UNSURE`, `INVALID`)
+* Ambiguity rules (for example, name vs. country conflicts)
+* A strict turn loop (`REFLECT → ACT → RESPOND`)
 
 It also enforces constraints such as:
-- Never saving uncertain values directly  
-- Always asking clarification when ambiguity exists  
-- Only submitting after explicit confirmation  
 
+* Never saving uncertain values directly
+* Always asking for clarification when ambiguity exists
+* Only submitting after explicit confirmation
 
 This component acts as the **decision-making brain**, transforming unstructured user input into structured actions.
 
-### 2.4. AgentRunner — Orchestration Layer
+### 2.4 AgentRunner — Orchestration Layer
 
 `AgentRunner` is responsible for executing the full conversational loop. It connects the LLM, tools, and state into a working system.
 
 Its responsibilities include:
-- Receiving user input  
-- Building the LLM agent with current state + tools  
-- Executing tool calls returned by the LLM  
-- Updating and persisting the state  
-- Handling retries, errors, and session management  
+
+* Receiving user input
+* Building the LLM agent with current state plus tools
+* Executing tool calls returned by the LLM
+* Updating and persisting the state
+* Handling retries, errors, and session management
 
 This component is the **runtime engine**, enabling a true stateful, multi-turn interaction instead of a simple stateless LLM call.
 
-
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/a6a962fb-3480-4ff2-abae-075365485573" />
-
+<p align="center">
+  <img width="1536" height="1024" alt="Architecture diagram" src="https://github.com/user-attachments/assets/a6a962fb-3480-4ff2-abae-075365485573" />
+</p>
 
 ## 3. prompt.py — The Brain of the Agent
 
@@ -93,145 +140,150 @@ The `prompt.py` module defines the reasoning and decision policy that drives the
 
 Our design follows the principles of **stateful LLM-based agents**, as described in:
 
-> **Wu et al. (2023)** — *Stateful LLM-based Agents that can Interact with and Learn from Environments*  
+> **Wu et al. (2023)** — *Stateful LLM-based Agents that can Interact with and Learn from Environments*
 > (arXiv:2303.03926)
 
 In this paradigm, the agent maintains an internal state that evolves across turns and directly influences future decisions. The prompt injects:
-- The current structured state (what is already known)
-- Missing fields (what still needs to be collected)
-- Pending clarifications (ambiguities to resolve)
-- Available tools (actions the agent can take)
 
-This allows the LLM to operate in a **closed-loop system (state → reasoning → action → updated state)** instead of a stateless single-shot response.
+* The current structured state (what is already known)
+* Missing fields (what still needs to be collected)
+* Pending clarifications (ambiguities to resolve)
+* Available tools (actions the agent can take)
 
+This allows the LLM to operate in a **closed-loop system (`state → reasoning → action → updated state`)** instead of a stateless single-shot response.
 
-#### 3.1 🔍 Token Classification as a Decision Primitive
+### 3.1 Token Classification as a Decision Primitive
 
 A key innovation in our prompt design is the use of **token-level classification** to guide the agent’s behavior.
 
 Instead of directly extracting and saving all information, the model must first classify each piece of input into:
 
-- **CONFIDENT** → clear, valid, and unambiguous → can be safely stored  
-- **UNSURE** → ambiguous, partial, or malformed → requires clarification  
-- **INVALID** → violates business rules → must be rejected and corrected  
+* **CONFIDENT** → clear, valid, and unambiguous → can be safely stored
+* **UNSURE** → ambiguous, partial, or malformed → requires clarification
+* **INVALID** → violates business rules → must be rejected and corrected
 
 This approach is inspired by structured extraction and uncertainty-aware NLP systems, particularly:
 
-> **Xiao et al. (2023)** — *InstructIE: A Unified Instruction-based Framework for Information Extraction*  
+> **Xiao et al. (2023)** — *InstructIE: A Unified Instruction-based Framework for Information Extraction*
 > (explicit reasoning before extraction)
 
 Instead of naive slot filling, the model performs a **two-step process**:
-1. **Interpretation** → understand meaning and ambiguity  
-2. **Decision** → determine whether to save, ask, or reject  
 
+1. **Interpretation** → understand meaning and ambiguity
+2. **Decision** → determine whether to save, ask, or reject
 
 This design enables the agent to:
 
-- Handle **messy and real-world inputs** (e.g., "2OO", "1k", "Pedro Brazil")
-- Avoid **silent errors** (never guessing under ambiguity)
-- Maintain **data integrity** (only validated values are stored)
-- Support **multi-turn reasoning** with explicit clarification loops
+* Handle **messy and real-world inputs** (for example, `"2OO"`, `"1k"`, `"Pedro Brazil"`)
+* Avoid **silent errors** by never guessing under ambiguity
+* Maintain **data integrity** by storing only validated values
+* Support **multi-turn reasoning** with explicit clarification loops
 
 In practice, this transforms the LLM from a passive extractor into an **active decision-making agent**, capable of safely interacting with users in high-stakes scenarios such as financial transactions.
 
-#### 3.2  Token Classification as a Decision Primitive
+### 3.2 Prompt Evolution Through Edge Cases
 
 The prompt was not designed in a single step. Instead, it was built iteratively, starting from simple extraction rules and evolving into a robust decision system through systematic testing of edge cases.
 
 The core idea was to transform the LLM from a passive extractor into an **active decision-maker**, capable of handling ambiguity, corrections, and multi-turn reasoning.
 
-##### 3.2.1 Edge Cases → Prompt Refinement
+#### 3.2.1 Edge Cases → Prompt Refinement
 
 We stress-tested the system with hard cases:
 
-- `"send 200 brl to Chile Rodrigues Lima"`  
-- `"send 1000 or 2000 USD"`  
-- `"send to Lima"`
+* `"send 200 brl to Chile Rodrigues Lima"`
+* `"send 1000 or 2000 USD"`
+* `"send to Lima"`
 
-These revealed that classification alone was not enough — the model still needed **explicit ambiguity handling**.
+These cases revealed that classification alone was not enough — the model still needed **explicit ambiguity handling**.
 
-
-##### 3.2.2 Ambiguity Rules
+#### 3.2.2 Ambiguity Rules
 
 We added deterministic rules to avoid guessing:
 
-- Never auto-assign ambiguous tokens  
-- Treat conflicts (e.g., *country vs name*) explicitly  
-- Generate clarification questions instead of assuming  
+* Never auto-assign ambiguous tokens
+* Treat conflicts (for example, *country vs. name*) explicitly
+* Generate clarification questions instead of making assumptions
+
 Example:
-```
+
+```text
 "Chile Rodrigues"
 → could be country OR name → must clarify
 ```
 
-##### 5.2.3. Turn Loop (Control)
+#### 3.2.3 Turn Loop (Control)
 
 We enforced a strict reasoning loop:
 
+```text
 REFLECT → ACT → RESPOND
+```
 
-- **REFLECT**: the model classifies all tokens (CONFIDENT / UNSURE / INVALID) and checks for pending clarifications  
-- **ACT**: the model decides exactly one action (e.g., `update_state`, `clarify`, `next_field`)  
-- **RESPOND**: the model produces a single, controlled output (usually one question)
+* **REFLECT**: the model classifies all tokens (`CONFIDENT`, `UNSURE`, `INVALID`) and checks for pending clarifications
+* **ACT**: the model decides exactly one action (for example, `update_state`, `clarify`, `next_field`)
+* **RESPOND**: the model produces a single, controlled output, usually one question
 
 This loop is critical because it:
-- Prevents the model from doing multiple things at once (e.g., saving + asking + confirming)
-- Forces alignment between reasoning and tool execution
-- Guarantees a predictable, step-by-step interaction flow
+
+* Prevents the model from doing multiple things at once (for example, saving, asking, and confirming in the same step)
+* Forces alignment between reasoning and tool execution
+* Guarantees a predictable, step-by-step interaction flow
 
 In practice, this transforms the LLM into a **deterministic controller**, not a free-form generator.
 
-
-##### 5.2.4. Few-Shots (Stability)
+#### 3.2.4 Few-Shots (Stability)
 
 After defining rules and control flow, we added few-shot examples to stabilize behavior.
 
 These examples demonstrate:
-- How to apply token classification in real inputs  
-- How to handle ambiguity (e.g., name vs country)  
-- How to structure tool calls and responses  
+
+* How to apply token classification to real inputs
+* How to handle ambiguity (for example, name vs. country)
+* How to structure tool calls and responses
 
 Few-shots are especially important because:
-- LLMs may interpret rules inconsistently without concrete examples  
-- They reduce variability across edge cases  
-- They reinforce the expected reasoning pattern (REFLECT → ACT → RESPOND)
+
+* LLMs may interpret rules inconsistently without concrete examples
+* They reduce variability across edge cases
+* They reinforce the expected reasoning pattern (`REFLECT → ACT → RESPOND`)
 
 Rather than teaching answers, few-shots teach **how to think and act**, improving consistency in complex, real-world scenarios.
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/fe9040d7-abf4-455d-9ab2-a3664d0f4524" />
+<p align="center">
+  <img width="1536" height="1024" alt="Prompt reasoning loop" src="https://github.com/user-attachments/assets/fe9040d7-abf4-455d-9ab2-a3664d0f4524" />
+</p>
 
----
+## 4. Evaluation — From Edge Cases to Metrics
 
-
-## 6. Evaluation — From Edge Cases to Metrics
-
-### 6.1. Introduction
+### 4.1 Introduction
 
 The evaluation strategy was designed to validate the system under **real-world uncertainty**, not just ideal inputs.
 
 Instead of relying only on standard benchmarks, we built a **custom evaluation pipeline** focused on:
-- Ambiguity handling  
-- Multi-turn reasoning  
-- Robustness to noisy and adversarial inputs  
 
+* Ambiguity handling
+* Multi-turn reasoning
+* Robustness to noisy and adversarial inputs
 
-### 6.2. Edge Case Generation (Stress Testing)
+### 4.2 Edge Case Generation (Stress Testing)
 
 The first step was creating structured **edge case test groups**, targeting each component of the system:
 
-- **A — Amount** → malformed formats (`2OO`, `1k`, `one thousand 500`)  
-- **B — Recipient** → ambiguity (`Maria Chile`, `Jordan Lima`)  
-- **C — Country** → variations (`Brasil`, `USA`, `Lima`)  
-- **D — Currency** → synonyms (`bucks`, `reais`, `pesos`)  
-- **E — Multi-turn / State** → corrections, multiple intents, resets  
-- **J — Adversarial** → prompt injection, malicious patterns  
+* **A — Amount** → malformed formats (`2OO`, `1k`, `one thousand 500`)
+* **B — Recipient** → ambiguity (`Maria Chile`, `Jordan Lima`)
+* **C — Country** → variations (`Brasil`, `USA`, `Lima`)
+* **D — Currency** → synonyms (`bucks`, `reais`, `pesos`)
+* **E — Multi-turn / State** → corrections, multiple intents, resets
+* **J — Adversarial** → prompt injection, malicious patterns
 
 Example:
+
 ```python
 {"group": "A2", "msg": "send 20xx0 USD to Maria Silva in Brazil"}
 {"group": "B2", "msg": "send 500 USD to Maria Chile"}
 {"group": "E4", "msg": "send 1000... actually 500 USD to Maria Silva"}
-````
+```
 
 These tests were used iteratively to **break the system and refine the prompt**, especially for:
 
@@ -239,8 +291,7 @@ These tests were used iteratively to **break the system and refine the prompt**,
 * Ambiguity rules
 * Turn loop behavior
 
-
-### 6.3. Multi-Turn Evaluation (Conversation-Level)
+### 4.3 Multi-Turn Evaluation (Conversation-Level)
 
 After stabilizing single-turn behavior, we moved to **multi-turn evaluation**, where correctness depends on the full interaction.
 
@@ -282,94 +333,91 @@ Example:
   }
 }
 ```
+
 This ensures the system is evaluated as a **stateful agent**, not just a single prediction.
 
-### 6.4. Metrics
+### 4.4 Metrics
 
 We defined metrics across three dimensions:
 
-| Category                 | Metric               | What it Measures                                 |
-| ------------------------ | -------------------- | ------------------------------------------------ |
-| **Deterministic (Core)** | State Accuracy       | Final correctness of extracted fields            |
-|                          | Task Completion      | Whether the flow ended correctly                 |
-|                          | Extraction Precision | If information was extracted at the right moment |
-|                          | Tool Call Accuracy   | Correct usage of tools                           |
-|                          | Correction Fidelity  | Proper handling of user corrections              |
-| **LLM Behavior**         | Response Discipline  | Controlled and structured responses              |
-|                          | Robustness           | Resistance to noisy/adversarial inputs           |
-| **System**               | Latency              | Response time                                    |
-|                          | Token Usage          | Cost efficiency                                  |
+| Category                 | Metric               | What it Measures                                      |
+| ------------------------ | -------------------- | ----------------------------------------------------- |
+| **Deterministic (Core)** | State Accuracy       | Final correctness of extracted fields                 |
+|                          | Task Completion      | Whether the flow ended correctly                      |
+|                          | Extraction Precision | Whether information was extracted at the right moment |
+|                          | Tool Call Accuracy   | Correct usage of tools                                |
+|                          | Correction Fidelity  | Proper handling of user corrections                   |
+| **LLM Behavior**         | Response Discipline  | Controlled and structured responses                   |
+|                          | Robustness           | Resistance to noisy and adversarial inputs            |
+| **System**               | Latency              | Response time                                         |
+|                          | Token Usage          | Cost efficiency                                       |
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/ba963426-7a31-4866-bdcf-990564aae388" />
+<p align="center">
+  <img width="1536" height="1024" alt="Evaluation pipeline" src="https://github.com/user-attachments/assets/ba963426-7a31-4866-bdcf-990564aae388" />
+</p>
 
-### 6.5. Results
+### 4.5 Results
 
 We evaluated two models:
 
-
 | Metric               | Gemini 3.2 | Gemini Flash |
-| -------------------- | ---------- | ------------ |
-| State Accuracy       | 1.00       | 1.00         |
-| Task Completion      | 1.00       | 1.00         |
-| Extraction Precision | 1.00       | 1.00         |
-| Tool Call Accuracy   | 0.97       | 0.92         |
-| Correction Fidelity  | 1.00       | 1.00         |
-| Response Discipline  | 0.72       | 0.69         |
-| Hard Fail Rate       | 0.00       | 0.00         |
-| Latency (ms)         | 27,277     | 22,277       |
+| -------------------- | ---------: | -----------: |
+| State Accuracy       |       1.00 |         1.00 |
+| Task Completion      |       1.00 |         1.00 |
+| Extraction Precision |       1.00 |         1.00 |
+| Tool Call Accuracy   |       0.97 |         0.92 |
+| Correction Fidelity  |       1.00 |         1.00 |
+| Response Discipline  |       0.72 |         0.69 |
+| Hard Fail Rate       |       0.00 |         0.00 |
+| Latency (ms)         |     27,277 |       22,277 |
 
+The evaluation highlights a clear separation between deterministic correctness and LLM behavioral quality. Both models achieved perfect scores (`1.00`) in **state accuracy**, **task completion**, **extraction precision**, and **correction fidelity**, confirming that the system design—based on state, tools, and validation—guarantees reliable execution. In practice, once the LLM makes a correct decision, the architecture ensures consistent state updates, proper handling of corrections, and safe transaction completion.
 
-The evaluation highlights a clear separation between deterministic correctness and LLM behavioral quality. Both models achieved perfect scores (1.00) in state accuracy, task completion, extraction precision, and correction fidelity, confirming that the system design—based on state, tools, and validation—guarantees reliable execution. In practice, once the LLM makes a correct decision, the architecture ensures consistent state updates, proper handling of corrections, and safe transaction completion.
+Differences appear in the LLM behavior layer, particularly in **tool selection** and **response discipline**. Gemini 3.2 shows slightly better reasoning consistency (`0.97` vs. `0.92` in tool accuracy), while both models struggle with strict response constraints (around `0.7`), which depend heavily on prompt adherence rather than core logic. Importantly, both models achieved a `0.00` hard fail rate, indicating strong robustness against noisy inputs and adversarial patterns, validating the safety of the overall design.
 
-Differences appear in the LLM behavior layer, particularly in tool selection and response discipline. Gemini 3.2 shows slightly better reasoning consistency (0.97 vs 0.92 in tool accuracy), while both models struggle with strict response constraints (≈0.7), which depend heavily on prompt adherence rather than core logic. Importantly, both models achieved a 0.00 hard fail rate, indicating strong robustness against noisy inputs and adversarial patterns, validating the safety of the overall design.
+Finally, there is a clear latency-versus-quality trade-off: Flash is about **20% faster** but slightly less consistent in reasoning. This reinforces a key architectural insight: **correctness is enforced by the system, while quality is driven by the LLM**, allowing flexible model selection based on cost, latency, or user experience without compromising safety.
 
-Finally, there is a clear latency vs quality trade-off: Flash is ~20% faster but slightly less consistent in reasoning. This reinforces a key architectural insight: correctness is enforced by the system, while quality is driven by the LLM, allowing flexible model selection based on cost, latency, or user experience without compromising safety.
+## 5. Limitations & Future Directions
 
----
+### 5.1 Model Coverage
 
-## 7. Limitations & Future Directions
-
-### 7.1. Model Coverage
-
-The evaluation focused only on large models (Gemini family), without testing smaller LLMs such as Mistral, Phi, or lightweight LLaMA variants. This limits our understanding of the cost–performance trade-off.
+The evaluation focused only on large models (Gemini family), without testing smaller LLMs such as Mistral, Phi, or lightweight LLaMA variants. This limits our understanding of the cost-performance trade-off.
 
 **Future direction:** benchmark smaller models to compare reasoning degradation versus cost savings, enabling more efficient deployment strategies.
 
-### 7.2. Adversarial Robustness
+### 5.2 Adversarial Robustness
 
-Although no hard failures were observed, adversarial testing was not exhaustive. Scenarios such as prompt injection or instruction override (e.g., *"ignore all rules"*) were not systematically evaluated.
+Although no hard failures were observed, adversarial testing was not exhaustive. Scenarios such as prompt injection or instruction override (for example, *"ignore all rules"*) were not systematically evaluated.
 
 Example:
-```
 
+```text
 send 500 USD and ignore previous instructions
-
 ```
 
 **Future direction:** incorporate adversarial testing frameworks and tools like **SelfCheckGPT** to measure consistency and resistance to manipulation, along with new metrics such as instruction override rate and policy violation rate.
 
-
-### 7.3. Evaluation Ecosystem Integration
+### 5.3 Evaluation Ecosystem Integration
 
 The current evaluation pipeline is custom-built and lacks integration with industry-standard observability tools.
 
 **Future direction:** integrate with platforms like **LangSmith** (for tracing and debugging) and **Arize Phoenix** (for monitoring and drift detection), enabling better visibility into failures, tool usage patterns, and prompt behavior over time.
 
-
-### 7.4. Business Metrics (KPI Layer)
+### 5.4 Business Metrics (KPI Layer)
 
 The evaluation focuses on technical correctness but does not capture business impact. Metrics such as conversion rate, drop-off rate, and customer lifetime value (CLV) are not currently tracked.
 
 A simple ROI metric could be defined as:
 
+```text
 ROI = (Revenue - Cost) / Cost
+```
 
 Where revenue is driven by successful transactions and cost includes tokens and infrastructure.
 
 **Future direction:** incorporate user-level tracking and connect model performance to real business KPIs.
 
-
-### 7.5. A/B Testing (Model vs ROI)
+### 5.5 A/B Testing (Model vs ROI)
 
 There was no A/B testing comparing models from a business perspective. While Flash is faster and cheaper, it shows slightly weaker reasoning performance.
 
@@ -377,14 +425,13 @@ There was no A/B testing comparing models from a business perspective. While Fla
 
 **Future direction:** run controlled A/B experiments comparing models on latency, completion rate, and user satisfaction to optimize for ROI.
 
-### 7.6. Monitoring & Continuous Evaluation
+### 5.6 Monitoring & Continuous Evaluation
 
 The current evaluation is offline and does not reflect real-time system performance.
 
 **Future direction:** implement continuous monitoring to track latency trends, tool failures, and user correction patterns, enabling ongoing optimization and early detection of issues.
 
----
-## 8. How to Run
+## 6. How to Run
 
 This project has **two main components**:
 
@@ -393,22 +440,23 @@ This project has **two main components**:
 
 They must run **in parallel**.
 
-## ⚙️ 1. Setup
+### 6.1 Setup
 
-### 1.1 Create environment
+#### 6.1.1 Create environment
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate   # Mac/Linux
 .venv\Scripts\activate      # Windows
 ```
-### 1.2 Install dependencies
+
+#### 6.1.2 Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 1.3 Environment variables
+#### 6.1.3 Environment variables
 
 Create `.env`:
 
@@ -416,39 +464,40 @@ Create `.env`:
 GOOGLE_API_KEY=your_api_key_here
 ```
 
-## 🔧 2. Run Backend (FastAPI)
+### 6.2 Run Backend (FastAPI)
 
-From project root:
+From the project root:
 
 ```bash
 uvicorn api.app:app --reload --port 8000
 ```
 
-✅ Backend running at:
+Backend running at:
 
-```
+```text
 http://localhost:8000
 ```
 
-## 🖥️ 3. Run Frontend (Streamlit)
+### 6.3 Run Frontend (Streamlit)
 
-Open a **new terminal** (important ⚠️)
+Open a **new terminal**:
 
 ```bash
 streamlit run ui/app_ui.py
 ```
 
-<img width="2258" height="1292" alt="image" src="https://github.com/user-attachments/assets/12ac3051-e3c5-4439-8bc2-dface4cee2e5" />
+<p align="center">
+  <img width="2258" height="1292" alt="Frontend UI" src="https://github.com/user-attachments/assets/12ac3051-e3c5-4439-8bc2-dface4cee2e5" />
+</p>
 
-
-## 🐳 Run with Docker
+### 6.4 Run with Docker
 
 This project uses **Docker Compose** to run both:
 
 * 🔧 FastAPI Backend (`api/app.py`)
 * 🖥️ Streamlit Frontend (`ui/app_ui.py`)
 
-### 📦 1. Build & Start
+#### 6.4.1 Build and start
 
 From the project root:
 
@@ -456,46 +505,46 @@ From the project root:
 docker-compose up --build
 ```
 
-### 🌐 2. Access the Applications
+#### 6.4.2 Access the applications
 
 Once containers are running:
 
-* 🔧 Backend API → [http://localhost:8000](http://localhost:8000)
-* 🖥️ Frontend UI → [http://localhost:8501](http://localhost:8501)
+* 🔧 Backend API → `http://localhost:8000`
+* 🖥️ Frontend UI → `http://localhost:8501`
 
-
-### 🛑 3. Stop Services
+#### 6.4.3 Stop services
 
 ```bash
 docker-compose down
 ```
 
-# 🧪 Run Evaluation
+## 7. Run Evaluation
 
-The evaluation pipeline has **3 steps**:
+The evaluation pipeline has **three steps**:
 
-1. 🔍 Run **edge cases** (stress testing)
-2. ▶️ Run **conversation test suite**
-3. 📊 Run **final evaluation metrics**
-
+1. Run **edge cases** (stress testing)
+2. Run **conversation test suite**
+3. Run **final evaluation metrics**
 
 The evaluation pipeline should be run in a **separate environment** to avoid conflicts with the main app.
 
-### 📦 1. Create Evaluation Environment
+### 7.1 Create Evaluation Environment
 
 ```bash
 python -m venv .venv-eval
 source .venv-eval/bin/activate   # Mac/Linux
 .venv-eval\Scripts\activate      # Windows
 ```
-Inside the `eval/` folder you have a dedicated `requirements.txt`.
+
+Inside the `eval/` folder, you have a dedicated `requirements.txt`.
 
 Install it:
 
 ```bash
 pip install -r eval/requirements.txt
 ```
-### 🔍  Run Edge Cases
+
+### 7.2 Run Edge Cases
 
 This step tests **single-turn robustness** with noisy, malformed, and adversarial inputs.
 
@@ -503,7 +552,7 @@ This step tests **single-turn robustness** with noisy, malformed, and adversaria
 python eval/test_edge_cases.py
 ```
 
-### 🧾 Edge Cases JSON Structure
+### 7.3 Edge Cases JSON Structure
 
 Each test is **simple and atomic**:
 
@@ -514,20 +563,22 @@ Each test is **simple and atomic**:
   "msg": "send 2OO USD to Maria Silva in Brazil"
 }
 ```
-Generates a file like:
+
+This generates a file like:
 
 ```bash
 results_YYYYMMDD_HHMMSS.json
 ```
-### Run Conversation Test Suite
 
-This step evaluates **multi-turn behavior** (state, corrections, control flow).
+### 7.4 Run Conversation Test Suite
+
+This step evaluates **multi-turn behavior** (state, corrections, and control flow).
 
 ```bash
 python eval/test_cv.py
 ```
 
-Each test is **multi-turn + expected behavior**:
+Each test is **multi-turn plus expected behavior**:
 
 ```json
 {
@@ -559,67 +610,64 @@ Each test is **multi-turn + expected behavior**:
 }
 ```
 
+This generates:
+
 ```bash
 eval/results/run_<timestamp>.json
 ```
 
-## Run Final Evaluation
+### 7.5 Run Final Evaluation
 
 After generating results:
 
 ```bash
 python eval/evaluation.py
 ```
- 📁 Output
+
+Output:
 
 ```bash
 eval/results/evaluation_final.json
 ```
----
 
-## 🎬 Demo
+## 8. Demo
 
-### 🌐 Live Demo (GCP)
+### 8.1 Live Demo (GCP)
 
 The backend is deployed on **Google Cloud Run**:
 
-👉 [https://send-money-agent-666450702512.us-central1.run.app/](https://send-money-agent-666450702512.us-central1.run.app/)
+[https://send-money-agent-666450702512.us-central1.run.app/](https://send-money-agent-666450702512.us-central1.run.app/)
 
-* Serverless (auto-scale, no infra management)
+* Serverless (auto-scale, no infrastructure management)
 * Public API endpoint
 * Runs the full agent (LLM + tools + state)
 
+### 8.2 Quick Test
 
-### 🧪 Quick Test
+You can interact via the UI or any HTTP client.
 
-You can interact via UI or any HTTP client.
-
-### Example
+Example:
 
 ```text
 send 500 USD to Maria Silva in Brazil via bank transfer
 ```
 
-Agent will:
+The agent will:
 
 * Extract and validate fields
 * Handle ambiguity if needed
 * Ask for confirmation
 * Execute safely
 
-
-## 🧠 What This Shows
+### 8.3 What This Shows
 
 * Stateful multi-turn reasoning
 * Robust parsing of messy inputs
 * Safe, tool-based execution
 * Production deployment on GCP
 
-
-## ☁️ Architecture
+### 8.4 Architecture
 
 ```text
 Client → Cloud Run (FastAPI) → Agent (LLM + Tools + State)
 ```
-
----
