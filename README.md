@@ -347,7 +347,6 @@ We defined metrics across three dimensions:
 |                          | Tool Call Accuracy   | Correct usage of tools                                |
 |                          | Correction Fidelity  | Proper handling of user corrections                   |
 | **LLM Behavior**         | Response Discipline  | Controlled and structured responses                   |
-|                          | Robustness           | Resistance to noisy and adversarial inputs            |
 | **System**               | Latency              | Response time                                         |
 |                          | Token Usage          | Cost efficiency                                       |
 
