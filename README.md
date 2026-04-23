@@ -140,7 +140,11 @@ The `prompt.py` module defines the reasoning and decision policy that drives the
 
 Our design follows the principles of **stateful LLM-based agents**, as described in:
 
-> **Hou et al. (2025)** — *EnvScaler: Scaling Tool-Interactive Environments for LLM Agent via Programmatic Synthesis*
+
+> **Song et al. (2024)** — *Just Ask One More Time!
+Self-Agreement Improves Reasoning of Language Models in (Almost) All Scenarios*
+
+> **Hou et al. (2023)** — *EnvScaler: Scaling Tool-Interactive Environments for LLM Agent via Programmatic Synthesis*
 
 In this paradigm, the agent maintains an internal state that evolves across turns and directly influences future decisions. The prompt injects:
 
