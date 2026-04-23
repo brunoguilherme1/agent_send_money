@@ -575,18 +575,51 @@ python eval/evaluation.py
 ```bash
 eval/results/evaluation_final.json
 ```
-
-
-## 🎬 Demo
-
-<p align="center">
-  <img src="./assets/mov.gif" width="800"/>
-</p>
-
 ---
 
+# 🎬 Demo
+
+## 🌐 Live Demo (GCP)
+
+The backend is deployed on **Google Cloud Run**:
+
+👉 [https://send-money-agent-666450702512.us-central1.run.app/](https://send-money-agent-666450702512.us-central1.run.app/)
+
+* Serverless (auto-scale, no infra management)
+* Public API endpoint
+* Runs the full agent (LLM + tools + state)
 
 
+## 🧪 Quick Test
+
+You can interact via UI or any HTTP client.
+
+### Example
+
+```text
+send 500 USD to Maria Silva in Brazil via bank transfer
+```
+
+Agent will:
+
+* Extract and validate fields
+* Handle ambiguity if needed
+* Ask for confirmation
+* Execute safely
 
 
+## 🧠 What This Shows
 
+* Stateful multi-turn reasoning
+* Robust parsing of messy inputs
+* Safe, tool-based execution
+* Production deployment on GCP
+
+
+## ☁️ Architecture
+
+```text
+Client → Cloud Run (FastAPI) → Agent (LLM + Tools + State)
+```
+
+---
